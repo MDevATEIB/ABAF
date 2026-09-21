@@ -1,0 +1,1018 @@
+﻿MISE Ë JOUR DU CAHIER DES CHARGES
+CONTRAT CAMPAGNE 2026-2027
+Version 1.1
+1. SYNTHéSE DES NOUVELLES INFORMATIONS
+1.1. Nature des marchandises (Article 1)
+Marchandise
+Sens du transport
+Type de fret
+Coton graine
+Centres dÕAchat ! 
+Usines dÕgrenage
+Fret direct
+Intrants agricoles
+Usines dÕgrenage 
+! AV / 
+Groupements
+Fret retour
+Graines de coton 
+semences
+Usines ! Huilerie 
+Moundou / 
+Dlintage GAYA
+vacuation
+Graines de coton 
+huilerie
+Usines ! Huilerie 
+Moundou / 
+Dlintage GAYA
+vacuation
+1.2. Trajets (Article 2)
+Trajet
+Description
+Coton graine
+Centres dÕAchat ! Usines 
+COTONTCHAD-SN
+Intrants agricoles
+Usines COTONTCHAD-SN ! 
+AV / Groupements
+Graines huilerie
+Usines dÕgrenage ! Huilerie 
+Moundou
+Graines semences
+Usines dÕgrenage ! 
+--- fin de flux ---
+!
+!
+!
+!
+!
+!
+!
+!
+!
+!
+!
+!
+!
+!
+!
+!
+Dlintage GAYA
+Transferts inter-usines
+Entre usines, selon les 
+besoins
+Rgle importante :
+ Le transport se fait 
+sans rupture de charge
+ du point de chargement au 
+point de dchargement.
+Le 
+poids considr pour la facturation
+ est le poids enregistr au 
+Pont-Bascule  lÕUsine de 
+dpart ou dÕarrive
+.
+1.3. Vhicules et chargement (Article 3)
+Les exigences comprennent notamment :
+Liste complte des vhicules  fournir : immatriculation, type et capacit ;
+Cahier dÕordre tenu au pont-bascule de lÕusine ;
+Enregistrement de lÕordre dÕarrive sur prsentation du vhicule et des pices 
+administratives.
+1.4. Dure du contrat (Article 4)
+Campagne cotonnire 2026/2027
+1.5. Accessibilit au fret (Article 5)
+Toutes les marchandises COTONTCHAD-SN sont  la disposition de 
+toutes les 
+socits de transport agres au TCHAD
+ et signataires du contrat ;
+COTONTCHAD-SN peut faire appel  un 
+transporteur prcis
+ pour des frets ponctuels.
+1.6. Information sur les offres de fret (Article 6)
+Les transporteurs sont informs des oprations par :
+Les 
+Chefs de Zone Cotonnire
+ ;
+Les 
+Gestionnaires Pont-Bascule
+.
+Les informations communiques portent notamment sur :
+La production par AV ;
+Les trajets ;
+Le rythme des chargements.
+2. OBLIGATIONS DU PRESTATAIRE
+CHAPITRE II
+2.1. Attestation de capacit (Article 7)
+Les documents  fournir sont les suivants :
+Autorisation dÕexercice commercial ;
+Preuve dÕinscription au Registre de commerce ;
+NIF ;
+Attestation de non-faillite ;
+Patente de lÕanne en cours ;
+Quitus fiscal.
+--- fin de flux ---
+2.2. Rgularit du transport (Article 8)
+Rgle
+Sanction / Disposition
+Transport  partir dÕun CA 
+diffrent de celui prvu
+Dcote de 20 %
+ sur le tarif, 
+sauf justification
+Panne simule ou abandon de 
+camion
+Suspension de lÕentreprise 
+pour toute la campagne
+Mise  disposition des 
+camions
+Obligation pendant toute la 
+campagne
+Carburant fourni par 
+COTONTCHAD
+60  100 litres aux 100 km
+Prix du carburant
+840 FCFA/litre
+, rvisable 
+selon les fluctuations
+Prix du transport
+Dtermins  la tonne et  la 
+tonne-kilomtrique selon les 
+tranches de distance
+margement sur bordereaux
+Distance entre Usine et AV 
+marge par le 
+Chef de Zone 
+Cotonnire
+2.3. Pnalits (Article 9)
+Cas
+Sanction
+Non-mise  disposition des 
+camions aprs avance
+0,5 % du montant de 
+lÕavance par jour de retard
+, 
+plafonn  10 %
+Retard suprieur  15 jours 
+aprs le 31 janvier 2027
+Retenue de paiement, 
+compensation, restitution de 
+--- fin de flux ---
+lÕavance, rsiliation et 
+poursuites judiciaires
+Priode de mise  disposition :
+ du 
+1er novembre 2026 au 31 janvier 2027
+.
+3. TARIFICATIONS (ARTICLE 10)
+CLARIFICATION MAJEURE
+CÕest le point le plus important pour le dveloppement du module de calcul.
+3.1. Grille tarifaire complte
+Cas
+Distance
+Type de fret
+Tarif
+1
+0  65 km
+Fret direct
+12 937 FCFA/
+tonne
+Fret retour Ñ 
+mise en place 
+dÕintrants
+6 468 FCFA/
+tonne
+2
+66  90 km
+Fret direct
+14 513 FCFA/
+tonne
+Fret retour Ñ 
+mise en place 
+dÕintrants
+7 256 FCFA/
+tonne
+3
+> 90 km
+Fret direct
+215 FCFA/
+TKM
+Fret retour Ñ 
+mise en place 
+dÕintrants
+107,5 FCFA/
+TKM
+4
+vacuation 
+graines Ñ 
+huilerie, 
+semences
+Fret direct
+87 FCFA/
+TKM
+--- fin de flux ---
+!
+!
+!
+!
+!
+!
+semences
+Fret direct
+87 FCFA/
+TKM
+5
+vacuation 
+intrants/
+semences en 
+sacs Ñ 
+transferts 
+inter-usines
+Fret direct
+92 FCFA/
+TKM
+3.2. Interprtation correcte
+TKM = Tonne-Kilomtre Mtre
+, unit de mesure du transport.
+Formule de calcul
+Cas
+Formule
+Distance ! 90 km
+Montant = Poids (tonnes) " 
+Tarif (FCFA/tonne)
+Distance > 90 km
+Montant = Poids (tonnes) " 
+Distance (km) " Tarif (FCFA/
+TKM)
+3.3. Exemples de calcul
+Exemple 1 : Transport de coton Ñ distance 50 km
+Tranche : 0  65 km
+Poids : 20 tonnes
+Distance : 50 km
+Tarif : 12 937 FCFA/tonne
+Montant = 20 ! 12 937 = 258 740 FCFA
+Exemple 2 : Transport de coton Ñ distance 80 km
+Tranche : 66  90 km
+Poids : 20 tonnes
+Distance : 80 km
+Tarif : 14 513 FCFA/tonne
+Montant = 20 ! 14 513 = 290 260 FCFA
+Exemple 3 : Transport de coton Ñ distance 183 km
+--- fin de flux ---
+!
+!
+!
+!
+!
+!
+!
+!
+!
+!
+!
+!
+!
+!
+!
+!
+!
+!
+!
+!
+!
+!
+!
+Tranche : > 90 km
+Poids : 20 tonnes
+Distance : 183 km
+Tarif : 215 FCFA/TKM
+Montant = 20 ! 183 ! 215 = 786 900 FCFA
+Exemple 4 : Transport dÕintrants Ñ distance 80 km
+Fret retour
+Poids : 25 tonnes
+Distance : 80 km
+Tarif retour : 7 256 FCFA/tonne
+Montant = 25 ! 7 256 = 181 400 FCFA
+Exemple 5 : vacuation de graines Ñ distance 200 km
+Poids : 30 tonnes
+Distance : 200 km
+Tarif : 87 FCFA/TKM
+Montant = 30 ! 200 ! 87 = 522 000 FCFA
+Exemple 6 : vacuation dÕintrants en sacs Ñ distance 150 km
+Poids : 15 tonnes
+Distance : 150 km
+Tarif : 92 FCFA/TKM
+Montant = 15 ! 150 ! 92 = 207 000 FCFA
+4. NORMES DE TRANSPORT (ARTICLE 11)
+4.1. Exigences
+Les exigences comprennent :
+Vhicules 
+assurs
+ pour les dommages ;
+Coton graine sec et sans corps tranger ;
+Intrants en bon tat et correctement conditionns ;
+Camions en parfait tat de fonctionnement ;
+Bches
+ en bon tat ;
+Extincteurs
+ en tat de marche ;
+Check-list
+ de vrification des organes et documents administratifs ;
+Contrles officiels et inopins ;
+Mineurs non autoriss
+ ;
+Macarons dÕagrment
+ obligatoires ;
+EPI Ñ quipements de Protection Individuelle
+ obligatoires pour les chauffeurs.
+--- fin de flux ---
+!
+!
+!
+5. PERTES ET AVARIES (ARTICLE 12)
+Manquants dÕintrants
+ ! Notes de dbit selon les valeurs prvues  lÕ
+ANNEXE 1
+ ;
+Avaries / dgradations
+ ! Notes de dbit selon les valeurs prvues  lÕ
+ANNEXE 1
+ ;
+Dduction
+ des montants correspondants sur les factures.
+6. OBLIGATIONS DE COTONTCHAD-SN
+CHAPITRE III
+6.1. Chargement et dchargement (Article 13)
+Opration
+Dlai
+Chargement
+3 jours maximum aprs 
+lÕarrive dans les Centres 
+dÕAchat
+Dchargement
+5 jours maximum aprs 
+lÕarrive au lieu de 
+dchargement
+Contrat excut
+Ds notification du 
+dchargement
+7. RéGLEMENT DES FACTURES ET REMBOURSEMENT DES AVANCES
+CHAPITRE IV
+7.1. tablissement et rglement des factures (Article 14)
+Rgle
+Description
+Factures
+Hors TVA, en 
+4 exemplaires
+Dtails obligatoires
+Poids, kilomtre TKM, trajet 
+et gasoil
+Originaux
+Bordereaux de transport 
+portant la mention 
+" ORIGINAL PAYABLE #
+--- fin de flux ---
+Envoi
+Direction Gnrale 
+COTONTCHAD-SN  
+Moundou
+Rglement
+30 jours
+ aprs rception  
+Moundou
+Nantissement
+Interdit
+Transfert de bordereaux
+Interdit
+Dpt des factures
+Chaque quinzaine / fin de 
+mois
+Litiges
+Traits sparment
+7.2. Remboursement des avances (Article 15)
+Tranche
+chance
+Montant
+Tranche 1
+Fin janvier
+1/3 du montant
+Tranche 2
+Fin fvrier
+1/3 du montant
+Tranche 3
+Fin mars
+1/3 du montant
+Obligation :
+ Retrait des bordereaux et facturation 
+chaque quinzaine
+ pour permettre 
+lÕapurement des avances.
+8. RSILIATION
+CHAPITRE V
+8.1. Rsiliation du contrat (Article 16)
+Cas
+Pravis / Disposition
+Non-respect des clauses
+1 mois, par lettre 
+recommande
+Fraude
+Immdiat, sans pravis
+Faux documents
+Immdiat, sans pravis
+--- fin de flux ---
+Abandon de poste
+Immdiat, sans pravis
+Corruption
+Immdiat, sans pravis
+Violation HSE
+Immdiat, sans pravis
+Sous-traitance non 
+autorise
+Immdiat, sans pravis
+9. DISPOSITIONS FINALES
+CHAPITRE VI
+9.1. Clauses
+Article
+Clause
+17
+Confidentialit
+18
+Conformit Ñ lois, 
+rglements et normes
+19
+Intgrit Ñ anti-corruption
+20
+Respect des lois anti-
+corruption
+21
+Code de conduite fournisseur
+22
+Force majeure
+23
+Modification Ñ avenant
+24
+Nullit partielle
+25
+Accords antrieurs
+26
+Tolrance
+27
+Rglement des litiges Ñ 
+Tribunal de Commerce de 
+Moundou
+--- fin de flux ---
+28
+Entre en vigueur
+10. IMPACTS SUR LE SYSTéME ABAF
+10.1. Modifications du modle de donnes
+Table 
+tarif
+Ñ Mise  jour
+CREATE TABLE tarif (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    saison_id INTEGER NOT NULL,
+    distance_min INTEGER NOT NULL,
+    distance_max INTEGER,
+    type_fret TEXT NOT NULL CHECK (type_fret IN 
+('Direct', 'Retour', 'Evacuation', 'Transfert')),
+    unite_tarif TEXT NOT NULL CHECK (unite_tarif IN 
+('FCFA_tonne', 'FCFA_TKM')),
+    tarif REAL NOT NULL,
+
+    FOREIGN KEY (saison_id) REFERENCES saison(id) ON 
+
+);
+Donnes  insrer Ñ Campagne 2026-2027
+Saison 2026-2027 :
+1 | 6 | 0  | 65   | Direct      | FCFA_tonne | 12937
+2 | 6 | 0  | 65   | Retour      | FCFA_tonne | 6468
+3 | 6 | 66 | 90   | Direct      | FCFA_tonne | 14513
+4 | 6 | 66 | 90   | Retour      | FCFA_tonne | 7256
+5 | 6 | 91 | NULL | Direct      | FCFA_TKM   | 215
+6 | 6 | 91 | NULL | Retour      | FCFA_TKM   | 107.5
+7 | 6 | 0  | NULL | Evacuation  | FCFA_TKM   | 87
+8 | 6 | 0  | NULL | Transfert   | FCFA_TKM   | 92
+10.2. Nouvelle fonction de calcul du montant brut
+--- fin de flux ---
+pub fn calculer_montant_brut(
+    poids_kg: f64,
+    distance_km: f64,
+    type_fret: &str,
+    saison_id: i64,
+    conn: &rusqlite::Connection,
+) -> Result<f64, String> {
+    // Rcuprer le tarif applicable
+    let tarif: (f64, String) = conn.query_row(
+        "SELECT tarif, unite_tarif
+         FROM tarif 
+         WHERE saison_id = ?1 
+           AND type_fret = ?2
+           AND ?3 >= distance_min
+           AND (distance_max IS NULL OR ?3 <= 
+distance_max)
+         ORDER BY distance_min DESC
+         LIMIT 1",
+        rusqlite::params![saison_id, type_fret, 
+distance_km],
+        |row| Ok((row.get(0)?, row.get(1)?)),
+    ).map_err(|e| e.to_string())?;
+    
+    let (tarif_valeur, unite) = tarif;
+    let poids_tonnes = poids_kg / 1000.0;
+    
+    // Calculer selon l'unit
+    let montant_brut = match unite.as_str() {
+        "FCFA_tonne" => poids_tonnes * tarif_valeur,
+        "FCFA_TKM" => poids_tonnes * distance_km * 
+tarif_valeur,
+        _ => return Err("Unit de tarif 
+inconnue".to_string()),
+    };
+--- fin de flux ---
+    
+    Ok(montant_brut)
+}
+10.3. Nouveaux champs  ajouter
+Table 
+bordereau
+ALTER TABLE bordereau ADD COLUMN type_fret TEXT CHECK 
+(type_fret IN ('Direct', 'Retour', 'Evacuation', 
+'Transfert'));
+ALTER TABLE bordereau ADD COLUMN distance_km REAL;
+ALTER TABLE bordereau ADD COLUMN tarif_applique REAL;
+ALTER TABLE bordereau ADD COLUMN unite_tarif TEXT;
+ALTER TABLE bordereau ADD COLUMN montant_brut REAL;
+Table 
+facture
+ALTER TABLE facture ADD COLUMN tkm REAL;
+ALTER TABLE facture ADD COLUMN detail_trajet TEXT;
+ALTER TABLE facture ADD COLUMN 
+mention_original_payable INTEGER DEFAULT 0;
+10.4. Nouvelles tables
+Table 
+penalite
+CREATE TABLE penalite (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    saison_id INTEGER NOT NULL,
+    transporteur TEXT,
+    type_penalite TEXT CHECK (
+        type_penalite IN (
+--- fin de flux ---
+            'Retard_camion',
+            'Decote_tarif',
+            'Avarie',
+            'Manquant',
+            'Autre'
+        )
+    ),
+    montant REAL NOT NULL,
+    motif TEXT,
+    date DATE NOT NULL,
+    statut TEXT CHECK (
+        statut IN (
+            'En cours',
+            'Applique',
+            'Annule'
+        )
+    ),
+
+    FOREIGN KEY (saison_id) REFERENCES saison(id)
+);
+Table 
+controle_vehicule
+CREATE TABLE controle_vehicule (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    camion_id INTEGER NOT NULL,
+    date DATE NOT NULL,
+    type_controle TEXT CHECK (
+        type_controle IN (
+            'Check_list_debut',
+            'Controle_officiel',
+            'Controle_inopine'
+        )
+    ),
+    resultat TEXT CHECK (
+--- fin de flux ---
+        resultat IN (
+            'Conforme',
+            'Non_conforme'
+        )
+    ),
+    observations TEXT,
+
+    FOREIGN KEY (camion_id) REFERENCES camion(id)
+);
+10.5. Nouvelles rgles de gestion
+Rgle
+Description
+Impact
+Dcote 20 %
+Si CA diffrent de 
+celui prvu
+Ë appliquer sur le 
+tarif
+Pnalit 0,5 %/
+jour
+Retard de mise  
+disposition
+Plafonne  10 % 
+de lÕavance
+Carburant
+60  100 L/100 km
+Ë vrifier sur les 
+BSM
+Prix carburant
+840 FCFA/L, 
+rvisable
+Ë paramtrer
+Poids facturation
+Pont-Bascule 
+Usine dpart/
+arrive
+Source officielle
+Dlai chargement
+3 jours maximum
+Alerte
+Dlai 
+dchargement
+5 jours maximum
+Alerte
+Rglement 
+facture
+30 jours aprs 
+rception
+Ë suivre
+--- fin de flux ---
+Dpt factures
+Chaque quinzaine
+Rappel
+Remboursement 
+avance
+3 tranches : janvier, 
+fvrier, mars
+Ë suivre
+Priode mise  
+disposition
+1er novembre 2026 
+Ð 31 janvier 2027
+Ë vrifier
+Mention 
+" ORIGINAL 
+PAYABLE #
+Sur bordereaux 
+originaux
+Ë imprimer
+4 exemplaires
+Factures
+Ë gnrer
+11. MISE Ë JOUR DU CAHIER DES CHARGES
+11.1. Version 1.1 Ñ Modifications
+Section
+Modification
+4.1
+Schma SQL : table 
+tarif
+ mise 
+ jour avec unit FCFA/tonne 
+ou FCFA/TKM
+4.1
+Ajout des tables 
+penalite
+ et 
+controle
+_
+vehicule
+4.1
+Ajout des colonnes 
+type
+_
+fret
+, 
+distance
+_
+km
+, 
+tarif
+_
+applique
+, 
+unite
+_
+tarif
+, 
+montant
+_
+brut
+  
+bordereau
+4.1
+Ajout des colonnes 
+tkm
+, 
+detail
+_
+trajet
+, 
+mention
+_
+original
+_
+payable
+  
+facture
+--- fin de flux ---
+8.1
+Rgles de calcul : formule 
+selon distance # 90 km ou > 
+90 km
+8.2
+Rgles de gestion : dcote 20 
+%, pnalits, carburant et 
+dlais
+5.12
+Module Facture : 4 
+exemplaires et mention 
+$ ORIGINAL PAYABLE %
+5.15
+Module Rapport Annuel : 
+intgration du TKM
+11.2. Nouvelles fonctionnalits  dvelopper
+Fonctionnalit
+Description
+Calcul TKM
+Calcul de la tonne-kilomtre 
+pour les distances > 90 km
+Dcote 20 %
+Application automatique si le 
+CA est diffrent de celui 
+prvu
+Pnalits
+Calcul et suivi des pnalits
+Contrle vhicule
+Check-list, contrles officiels 
+et inopins
+Suivi avances
+Gestion des 3 tranches de 
+remboursement
+Alertes dlais
+Chargement : 3 jours ; 
+dchargement : 5 jours ; 
+--- fin de flux ---
+!
+!
+!
+!
+!
+!
+!
+!
+"
+.
+#
+.
+$
+.
+%
+.
+&
+.
+'
+.
+!
+!
+!
+!
+rglement : 30 jours
+Mention " ORIGINAL 
+PAYABLE #
+Ajout automatique sur les 
+bordereaux imprims
+4 exemplaires factures
+Gnration automatique
+Dpt quinzaine
+Rappel et suivi des dpts
+Carburant
+Vrification de la 
+consommation entre 60 et 
+100 L/100 km
+12. EXEMPLE DE CALCUL COMPLET AVEC LES NOUVELLES RéGLES
+12.1. Bordereau de transport de coton graine
+Donnes
+Camion :
+ 08P0444A
+CGI :
+ BAKE Ñ usine MDOU
+Distance :
+ 183 km
+Poids net coton :
+ 20 600 kg = 20,6 tonnes
+Type de fret :
+ Direct
+Gasoil :
+ 226 L
+Prix du gasoil :
+ 840 FCFA/L
+Saison :
+ 2026-2027
+Calcul
+Distance = 
+183 km
+ ! tranche > 90 km
+Type de fret = 
+Direct
+Tarif = 
+215 FCFA/TKM
+Montant brut = 
+20,6 ! 183 ! 215 = 810 807 FCFA
+Montant gasoil = 
+226 ! 840 = 189 840 FCFA
+Montant net = 
+810 807 " 189 840 = 620 967 FCFA
+Vrification :
+ Le montant net est positif et cohrent.
+12.2. Bordereau de transport dÕintrants
+Donnes
+Camion :
+ 08P0444A
+Usine :
+ MDOU
+Destination / CGI :
+ GADJIBIAN
+Distance :
+ 80 km
+--- fin de flux ---
+!
+!
+!
+"
+.
+#
+.
+$
+.
+%
+.
+!
+!
+!
+!
+!
+!
+!
+"
+.
+#
+.
+$
+.
+"
+.
+#
+.
+$
+.
+%
+.
+&
+.
+'
+.
+(
+.
+!
+!
+Poids intrant :
+ 25 000 kg = 25 tonnes
+Type de fret :
+ Retour
+Saison :
+ 2026-2027
+Calcul
+Distance = 
+80 km
+ ! tranche 66  90 km
+Type de fret = 
+Retour
+Tarif = 
+7 256 FCFA/tonne
+Montant brut = 
+25 ! 7 256 = 181 400 FCFA
+12.3. Bordereau dÕvacuation de graines
+Donnes
+Camion :
+ 08P0444A
+Usine :
+ MDOU
+Destination :
+ Huilerie Moundou
+Distance :
+ 200 km
+Poids graines :
+ 30 000 kg = 30 tonnes
+Type de fret :
+ vacuation
+Saison :
+ 2026-2027
+Calcul
+Type de fret = 
+vacuation
+Tarif = 
+87 FCFA/TKM
+Montant brut = 
+30 ! 200 ! 87 = 522 000 FCFA
+13. PROCHAINES TAPES
+Valider
+ la nouvelle grille tarifaire avec ABAF.
+Mettre  jour
+ le modle de donnes SQL.
+Modifier
+ la fonction de calcul du montant brut.
+Ajouter
+ les nouvelles tables penalite et controle
+_
+vehicule.
+Dvelopper
+ les nouvelles fonctionnalits : TKM, dcote, pnalits, etc.
+Tester
+ avec les donnes de la campagne 2026-2027.
+Former
+ les utilisateurs aux nouvelles rgles.
+14. CONCLUSION
+Ce contrat apporte plusieurs 
+clarifications majeures
+ au fonctionnement du systme ABAF :
+Tarification
+Distinction entre les tarifs 
+FCFA/tonne
+ pour les distances ) 90 km et 
+FCFA/TKM
+ pour les 
+distances > 90 km.
+Types de fret
+Prise en charge des quatre types de fret :
+Direct
+Retour
+--- fin de flux ---
+!
+!
+!
+!
+!
+!
+!
+!
+!
+!
+!
+!
+!
+!
+!
+!
+!
+!
+!
+vacuation
+Transfert
+Carburant
+Consommation : 
+60  100 L/100 km
+Prix de rfrence : 
+840 FCFA/litre
+, rvisable.
+Pnalits
+Dcote de 20 %
+ en cas de transport depuis un CA diffrent de celui prvu, sauf 
+justification ;
+0,5 % par jour de retard
+ pour la non-mise  disposition des camions, plafonn  10 % 
+de lÕavance.
+Dlais
+Chargement : 
+3 jours maximum
+Dchargement : 
+5 jours maximum
+Rglement des factures : 
+30 jours aprs rception
+Remboursement des avances
+Remboursement en 
+3 tranches
+ :
+Fin janvier : 1/3
+Fin fvrier : 1/3
+Fin mars : 1/3
+Facturation
+Factures en 
+4 exemplaires
+Mention 
+# ORIGINAL PAYABLE $
+ sur les bordereaux originaux
+Dpt des factures selon la priodicit prvue au contrat
+Contrles
+Check-list des vhicules
+Contrles officiels
+Contrles inopins
+Suivi des quipements et documents obligatoires
+Le systme ABAF devra intgrer lÕensemble de ces rgles afin de permettre une gestion 
+conforme aux exigences du contrat de transport de la campagne 2026-2027.
+--- fin de flux ---
