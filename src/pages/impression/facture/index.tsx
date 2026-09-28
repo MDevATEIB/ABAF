@@ -11,6 +11,7 @@ import {
   useLignesFacture,
   useParametres,
   useSaisons,
+  useTarifs,
   useUsines,
 } from '@/hooks';
 import { FactureDocument } from '@/templates';
@@ -36,6 +37,7 @@ export default function ImpressionFacturePage() {
 
   const facture = factures.data?.find((f) => f.id === factureId);
   const lignes = useLignesFacture(facture?.id);
+  const tarifs = useTarifs(facture?.saison_id);
 
   const enChargement =
     factures.isLoading ||
@@ -45,6 +47,7 @@ export default function ImpressionFacturePage() {
     camions.isLoading ||
     usines.isLoading ||
     saisons.isLoading ||
+    tarifs.isLoading ||
     lignes.isLoading ||
     parametres.isLoading;
   const erreur =
@@ -55,6 +58,7 @@ export default function ImpressionFacturePage() {
     camions.error ??
     usines.error ??
     saisons.error ??
+    tarifs.error ??
     lignes.error ??
     parametres.error;
 
@@ -117,6 +121,7 @@ export default function ImpressionFacturePage() {
         camionNom={camionNom}
         usineNom={usineNom}
         entreprise={parametres.data}
+        tarifs={tarifs.data ?? []}
       />
     </div>
   );

@@ -1,4 +1,4 @@
-import type { Parametres, Recapitulatif } from '@/types';
+import type { FactureReleve, Parametres, Recapitulatif } from '@/types';
 import {
   formatDate,
   formatFCFA,
@@ -16,39 +16,21 @@ interface LigneFactureReleve {
   montant: number;
 }
 
-function grouperParFacture(recap: Recapitulatif): { lignes: LigneFactureReleve[]; total: number } {
-  const parFacture = new Map<
-    string,
-    { numero_facture: string; date: string; usine?: string; montant: number }
-  >();
-
-  for (const l of recap.lignes) {
-    const cle = l.numero_facture?.trim();
-    if (!cle) continue;
-    const existant = parFacture.get(cle);
-    const montant = l.montant_net ?? 0;
-    if (!existant) {
-      parFacture.set(cle, {
-        numero_facture: cle,
-        date: l.date_bordereau,
-        usine: l.usine,
-        montant,
-      });
-    } else {
-      existant.montant += montant;
-      if (l.date_bordereau < existant.date) {
-        existant.date = l.date_bordereau;
-      }
-      if (!existant.usine && l.usine) {
-        existant.usine = l.usine;
-      }
-    }
-  }
-
-  const entrees = [...parFacture.values()].sort((a, b) => {
-    if (a.date !== b.date) return a.date.localeCompare(b.date);
-    return a.numero_facture.localeCompare(b.numero_facture);
-  });
+function construireLignesFactures(factures: FactureReleve[]): {
+  lignes: LigneFactureReleve[];
+  total: number;
+} {
+  const entrees = [...factures]
+    .map((facture) => ({
+      numero_facture: facture.numero.trim(),
+      date: facture.date_facture,
+      usine: facture.usine,
+      montant: facture.montant_net,
+    }))
+    .sort((a, b) => {
+      if (a.date !== b.date) return a.date.localeCompare(b.date);
+      return a.numero_facture.localeCompare(b.numero_facture);
+    });
 
   const lignes = entrees.map((e, i) => ({ ordre: i + 1, ...e }));
   const total = lignes.reduce((s, l) => s + l.montant, 0);
@@ -63,7 +45,7 @@ interface ReleveDocumentProps {
 export function ReleveDocument({ recap, entreprise }: ReleveDocumentProps) {
   const { saison_libelle, date_debut, date_fin } = recap;
 
-  const { lignes: lignesFactures, total: totalFactures } = grouperParFacture(recap);
+  const { lignes: lignesFactures, total: totalFactures } = construireLignesFactures(recap.factures ?? []);
 
   const nbFactures = lignesFactures.length;
   const dateEdition = date_fin || date_debut;

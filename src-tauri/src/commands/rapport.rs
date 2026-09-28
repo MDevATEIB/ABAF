@@ -1,8 +1,8 @@
 ﻿// Commandes Tauri - module rapport (Phase 5)
 use crate::db::AppState;
 use crate::models::rapport::{
-    BsmRapport, ComparaisonCampagne, LigneRapport, PaiementRapport, RapportAnnuel, Recapitulatif,
-    TotauxRapport,
+    BsmRapport, ComparaisonCampagne, FactureReleve, LigneRapport, PaiementRapport, RapportAnnuel,
+    Recapitulatif, TotauxRapport,
 };
 use rusqlite::Connection;
 use rust_xlsxwriter::{Color, Format, FormatAlign, FormatBorder, Workbook, XlsxError};
@@ -37,6 +37,7 @@ pub fn generer_recapitulatif(
         date_debut: saison.date_debut,
         date_fin: saison.date_fin,
         lignes: construire_lignes(&db, saison.id)?,
+        factures: construire_factures_releve(&db, saison.id)?,
         totaux: construire_totaux(&db, saison.id)?,
     })
 }
@@ -113,7 +114,10 @@ pub fn exporter_rapport_excel(
 
 // ─── Aide interne ─────────────────────────────────────────────────────────────
 
-pub(crate) fn resoudre_saison(db: &Connection, saison_id: Option<i64>) -> Result<SaisonResume, String> {
+pub(crate) fn resoudre_saison(
+    db: &Connection,
+    saison_id: Option<i64>,
+) -> Result<SaisonResume, String> {
     let id = match saison_id {
         Some(id) => id,
         None => db
@@ -140,8 +144,46 @@ pub(crate) fn resoudre_saison(db: &Connection, saison_id: Option<i64>) -> Result
     .map_err(|_| "Campagne introuvable.".to_string())
 }
 
-/// Tableau des opérations : une ligne par bordereau, avec le gasoil de la
-/// mission (BSM), la facturation du bordereau et les intrants chargés.
+/// Liste des factures et montants nets réellement enregistrés, pour le relevé.
+fn construire_factures_releve(
+    db: &Connection,
+    saison_id: i64,
+) -> Result<Vec<FactureReleve>, String> {
+    let mut stmt = db
+        .prepare(
+            "SELECT f.numero, f.date_facture,
+                    (SELECT u.nom
+                     FROM lignes_facture lf
+                     JOIN bordereaux b ON b.id = lf.bordereau_id
+                     LEFT JOIN usines u ON u.id = b.usine_id
+                     WHERE lf.facture_id = f.id
+                     ORDER BY lf.id
+                     LIMIT 1),
+                    f.montant_net
+             FROM factures f
+             WHERE f.saison_id = ?1
+             ORDER BY f.date_facture, f.id",
+        )
+        .map_err(|e| e.to_string())?;
+
+    let lignes = stmt
+        .query_map(rusqlite::params![saison_id], |row| {
+            Ok(FactureReleve {
+                numero: row.get(0)?,
+                date_facture: row.get(1)?,
+                usine: row.get(2)?,
+                montant_net: row.get(3)?,
+            })
+        })
+        .map_err(|e| e.to_string())?
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|e| e.to_string())?;
+
+    Ok(lignes)
+}
+
+/// Tableau des opérations : une ligne par bordereau, avec le gasoil des BSM
+/// associés à ce bordereau, la facturation et les intrants chargés.
 fn construire_lignes(db: &Connection, saison_id: i64) -> Result<Vec<LigneRapport>, String> {
     let mut stmt = db
         .prepare(
@@ -154,11 +196,44 @@ fn construire_lignes(db: &Connection, saison_id: i64) -> Result<Vec<LigneRapport
                     (SELECT COALESCE(SUM(lb.poids_kg), 0)
                      FROM lignes_bordereau lb WHERE lb.bordereau_id = b.id),
                     (SELECT COALESCE(SUM(x.quantite_litres), 0)
-                     FROM bsm x WHERE x.mission_id = b.mission_id),
+                     FROM bsm x
+                     WHERE x.id = b.bsm_id
+                        OR (b.bsm_id IS NULL AND x.mission_id = b.mission_id
+                            AND NOT EXISTS (
+                                SELECT 1 FROM bordereaux bx
+                                WHERE bx.mission_id = b.mission_id
+                                  AND bx.bsm_id = x.id
+                            )
+                            AND b.id = (
+                                SELECT MIN(bx.id) FROM bordereaux bx
+                                WHERE bx.mission_id = b.mission_id
+                            ))),
                     (SELECT COALESCE(SUM(x.montant), 0)
-                     FROM bsm x WHERE x.mission_id = b.mission_id),
+                     FROM bsm x
+                     WHERE x.id = b.bsm_id
+                        OR (b.bsm_id IS NULL AND x.mission_id = b.mission_id
+                            AND NOT EXISTS (
+                                SELECT 1 FROM bordereaux bx
+                                WHERE bx.mission_id = b.mission_id
+                                  AND bx.bsm_id = x.id
+                            )
+                            AND b.id = (
+                                SELECT MIN(bx.id) FROM bordereaux bx
+                                WHERE bx.mission_id = b.mission_id
+                            ))),
                     (SELECT GROUP_CONCAT(x.numero, ', ')
-                     FROM bsm x WHERE x.mission_id = b.mission_id),
+                     FROM bsm x
+                     WHERE x.id = b.bsm_id
+                        OR (b.bsm_id IS NULL AND x.mission_id = b.mission_id
+                            AND NOT EXISTS (
+                                SELECT 1 FROM bordereaux bx
+                                WHERE bx.mission_id = b.mission_id
+                                  AND bx.bsm_id = x.id
+                            )
+                            AND b.id = (
+                                SELECT MIN(bx.id) FROM bordereaux bx
+                                WHERE bx.mission_id = b.mission_id
+                            ))),
                     (SELECT f.numero
                      FROM lignes_facture lf JOIN factures f ON f.id = lf.facture_id
                      WHERE lf.bordereau_id = b.id LIMIT 1),
@@ -484,7 +559,12 @@ fn construire_classeur(
 
     let mut ligne = 4_u32;
     for item in lignes {
-        feuille.write_string_with_format(ligne, 0, item.numero_bordereau.as_str(), &styles.texte)?;
+        feuille.write_string_with_format(
+            ligne,
+            0,
+            item.numero_bordereau.as_str(),
+            &styles.texte,
+        )?;
         feuille.write_string_with_format(ligne, 1, item.date_bordereau.as_str(), &styles.texte)?;
         feuille.write_string_with_format(
             ligne,
@@ -498,9 +578,24 @@ fn construire_classeur(
             item.numero_camion.as_deref().unwrap_or(""),
             &styles.texte,
         )?;
-        feuille.write_string_with_format(ligne, 4, item.usine.as_deref().unwrap_or(""), &styles.texte)?;
-        feuille.write_string_with_format(ligne, 5, item.cgi.as_deref().unwrap_or(""), &styles.texte)?;
-        feuille.write_string_with_format(ligne, 6, item.av.as_deref().unwrap_or(""), &styles.texte)?;
+        feuille.write_string_with_format(
+            ligne,
+            4,
+            item.usine.as_deref().unwrap_or(""),
+            &styles.texte,
+        )?;
+        feuille.write_string_with_format(
+            ligne,
+            5,
+            item.cgi.as_deref().unwrap_or(""),
+            &styles.texte,
+        )?;
+        feuille.write_string_with_format(
+            ligne,
+            6,
+            item.av.as_deref().unwrap_or(""),
+            &styles.texte,
+        )?;
         match item.poids_coton_kg {
             Some(valeur) => {
                 feuille.write_number_with_format(ligne, 7, valeur, &styles.nombre)?;
@@ -604,7 +699,12 @@ fn construire_classeur(
         let ligne = 2 + index as u32;
         feuille.write_string_with_format(ligne, 0, bsm.numero.as_str(), &styles.texte)?;
         feuille.write_string_with_format(ligne, 1, bsm.date_bsm.as_str(), &styles.texte)?;
-        feuille.write_string_with_format(ligne, 2, bsm.camion.as_deref().unwrap_or(""), &styles.texte)?;
+        feuille.write_string_with_format(
+            ligne,
+            2,
+            bsm.camion.as_deref().unwrap_or(""),
+            &styles.texte,
+        )?;
         feuille.write_string_with_format(
             ligne,
             3,
@@ -613,7 +713,12 @@ fn construire_classeur(
         )?;
         feuille.write_number_with_format(ligne, 4, bsm.quantite_litres, &styles.nombre_dec)?;
         feuille.write_number_with_format(ligne, 5, bsm.montant, &styles.nombre)?;
-        feuille.write_string_with_format(ligne, 6, libelle_statut_bsm(&bsm.statut), &styles.texte)?;
+        feuille.write_string_with_format(
+            ligne,
+            6,
+            libelle_statut_bsm(&bsm.statut),
+            &styles.texte,
+        )?;
     }
     let largeurs_bsm: [f64; 7] = [14.0, 11.0, 12.0, 20.0, 10.0, 15.0, 11.0];
     for (colonne, largeur) in largeurs_bsm.iter().enumerate() {
@@ -631,19 +736,19 @@ fn construire_classeur(
         format!("Règlements — {}", saison.libelle).as_str(),
         &styles.titre,
     )?;
-    const COLONNES_REGLEMENTS: [&str; 5] = [
-        "Date",
-        "N° Facture",
-        "Montant (FCFA)",
-        "Mode",
-        "Statut",
-    ];
+    const COLONNES_REGLEMENTS: [&str; 5] =
+        ["Date", "N° Facture", "Montant (FCFA)", "Mode", "Statut"];
     for (colonne, libelle) in COLONNES_REGLEMENTS.iter().enumerate() {
         feuille.write_string_with_format(1, colonne as u16, *libelle, &styles.entete)?;
     }
     for (index, paiement) in paiements.iter().enumerate() {
         let ligne = 2 + index as u32;
-        feuille.write_string_with_format(ligne, 0, paiement.date_paiement.as_str(), &styles.texte)?;
+        feuille.write_string_with_format(
+            ligne,
+            0,
+            paiement.date_paiement.as_str(),
+            &styles.texte,
+        )?;
         feuille.write_string_with_format(
             ligne,
             1,
@@ -672,14 +777,7 @@ fn construire_classeur(
     // ── Feuille « Comparaison » ──
     let feuille = classeur.add_worksheet();
     feuille.set_name("Comparaison")?;
-    feuille.merge_range(
-        0,
-        0,
-        0,
-        5,
-        "Comparaison avec les campagnes",
-        &styles.titre,
-    )?;
+    feuille.merge_range(0, 0, 0, 5, "Comparaison avec les campagnes", &styles.titre)?;
     const COLONNES_COMPARAISON: [&str; 6] = [
         "Campagne",
         "Bordereaux",
@@ -694,9 +792,19 @@ fn construire_classeur(
     for (index, campagne) in comparaison.iter().enumerate() {
         let ligne = 2 + index as u32;
         feuille.write_string_with_format(ligne, 0, campagne.libelle.as_str(), &styles.texte)?;
-        feuille.write_number_with_format(ligne, 1, campagne.nb_bordereaux as f64, &styles.nombre)?;
+        feuille.write_number_with_format(
+            ligne,
+            1,
+            campagne.nb_bordereaux as f64,
+            &styles.nombre,
+        )?;
         feuille.write_number_with_format(ligne, 2, campagne.tonnage_coton_kg, &styles.nombre)?;
-        feuille.write_number_with_format(ligne, 3, campagne.distance_totale_km, &styles.nombre_dec)?;
+        feuille.write_number_with_format(
+            ligne,
+            3,
+            campagne.distance_totale_km,
+            &styles.nombre_dec,
+        )?;
         feuille.write_number_with_format(ligne, 4, campagne.gasoil_litres, &styles.nombre_dec)?;
         feuille.write_number_with_format(ligne, 5, campagne.montant_net, &styles.nombre)?;
     }
@@ -746,6 +854,12 @@ fn nettoyer_nom_fichier(nom: &str) -> String {
             '\\' | '/' | ':' | '*' | '?' | '"' | '<' | '>' | '|' => '_',
             _ => caractere,
         })
-        .map(|caractere| if caractere.is_whitespace() { '_' } else { caractere })
+        .map(|caractere| {
+            if caractere.is_whitespace() {
+                '_'
+            } else {
+                caractere
+            }
+        })
         .collect()
 }

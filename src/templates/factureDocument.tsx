@@ -1,5 +1,5 @@
-import type { BSM, Bordereau, Client, Facture, LigneFacture, Parametres } from '@/types';
-import { formatDate, formatNumeroFacture, montantFCFAEnLettres } from '@/utils';
+import type { BSM, Bordereau, Client, Facture, LigneFacture, Parametres, Tarif } from '@/types';
+import { formatDate, formatNumeroFacture, labelTypeFret, montantFCFAEnLettres } from '@/utils';
 import { buildLignesFactureTableData } from './factureDocument.helpers.js';
 import { EnteteAbaf } from './enteteAbaf';
 
@@ -13,6 +13,7 @@ interface FactureDocumentProps {
   camionNom: Map<number, string>;
   usineNom: Map<number, string>;
   entreprise?: Parametres;
+  tarifs?: Tarif[];
 }
 
 const EXEMPLAIRES = ['Original', 'Copie 1', 'Copie 2', 'Copie 3'] as const;
@@ -44,6 +45,7 @@ function FeuilletFacture({
   camionNom,
   usineNom,
   entreprise,
+  tarifs,
   exemplaire,
 }: FeuilletFactureProps) {
   const lignesTransport = lignes.filter((l) => l.bordereau_id != null);
@@ -51,15 +53,13 @@ function FeuilletFacture({
   const lignesGasoil = lignes.filter((l) => l.bsm_id != null);
 
   const totalPoidsKg = lignesTransport.reduce((t, l) => t + l.poids_net_kg, 0);
-  const totalBrut = lignesTransport.reduce((t, l) => t + l.montant_brut, 0);
-  const totalGasoil = lignesGasoil.reduce((t, l) => t + l.montant_gasoil, 0);
+  const totalBrut = facture.montant_brut;
+  const totalGasoil = facture.montant_gasoil;
   const totalQteGasoil = lignesGasoil.reduce((t, l) => {
     const bsm = l.bsm_id != null ? bsmParId.get(l.bsm_id) : undefined;
     return t + (bsm?.quantite_litres ?? 0);
   }, 0);
   const totalNet = facture.montant_net;
-  const prixLitreMoyen =
-    totalQteGasoil > 0 ? totalGasoil / totalQteGasoil : 0;
 
   const premierBordereau =
     lignesTransport.length > 0
@@ -145,13 +145,13 @@ function FeuilletFacture({
               Tonnage
             </th>
             <th
-              colSpan={2}
+              colSpan={3}
               className="border border-black px-1 py-1 text-center font-semibold"
             >
               Montant Brut
             </th>
             <th
-              colSpan={2}
+              colSpan={1}
               className="border border-black px-1 py-1 text-center font-semibold"
             >
               Total
@@ -180,7 +180,7 @@ function FeuilletFacture({
               Distance
             </th>
             <th className="border border-black px-1 py-1 text-center font-semibold">
-              Traif
+              Tarif
             </th>
             <th className="border border-black px-1 py-1 text-center font-semibold">
               Coton Graine
@@ -206,10 +206,6 @@ function FeuilletFacture({
           {lignesTransport.map((ligne, index) => {
             const bdr = bordereauParId.get(ligne.bordereau_id!);
             const ligneAffichage = lignesTransportAffichage[index];
-            const estPremiere = index === 0;
-            const netLigne =
-              ligne.montant_net - (estPremiere ? totalGasoil : 0);
-
             return (
               <tr key={ligne.id}>
                 <td className="border border-black px-1 py-1 text-center">
@@ -218,9 +214,7 @@ function FeuilletFacture({
                 <td className="border border-black px-1 py-1 text-right">
                   {tonnes(ligneAffichage.cotonGraineKg)}
                 </td>
-                <td className="border border-black px-1 py-1 text-right">
-                  &nbsp;
-                </td>
+                <td className="border border-black px-1 py-1 text-right">&nbsp;</td>
                 <td className="border border-black px-1 py-1 text-right">
                   {numFr(ligneAffichage.distanceKm)}
                 </td>
@@ -230,29 +224,49 @@ function FeuilletFacture({
                 <td className="border border-black px-1 py-1 text-right">
                   {numFr(ligneAffichage.montantBrut)}
                 </td>
+                <td className="border border-black px-1 py-1 text-right">&nbsp;</td>
+                <td className="border border-black px-1 py-1 text-right">&nbsp;</td>
+                <td className="border border-black px-1 py-1 text-right font-medium">
+                  {numFr(ligneAffichage.montantBrut)}
+                </td>
+                <td className="border border-black px-1 py-1 text-right">&nbsp;</td>
+                <td className="border border-black px-1 py-1 text-right">&nbsp;</td>
+                <td className="border border-black px-1 py-1 text-right">&nbsp;</td>
+                <td className="border border-black px-1 py-1 text-right font-medium">
+                  {numFr(ligne.montant_brut)}
+                </td>
+              </tr>
+            );
+          })}
+          {lignesGasoil.map((ligne) => {
+            const bsm = ligne.bsm_id != null ? bsmParId.get(ligne.bsm_id) : undefined;
+            return (
+              <tr key={ligne.id}>
+                <td className="border border-black px-1 py-1 text-center">
+                  {bsm?.numero ?? ligne.description ?? 'BSM'}
+                </td>
+                <td className="border border-black px-1 py-1">&nbsp;</td>
+                <td className="border border-black px-1 py-1">&nbsp;</td>
+                <td className="border border-black px-1 py-1">&nbsp;</td>
+                <td className="border border-black px-1 py-1">&nbsp;</td>
+                <td className="border border-black px-1 py-1">&nbsp;</td>
+                <td className="border border-black px-1 py-1">&nbsp;</td>
+                <td className="border border-black px-1 py-1">&nbsp;</td>
+                <td className="border border-black px-1 py-1">&nbsp;</td>
+                <td className="border border-black px-1 py-1 text-right">&nbsp;</td>
+                <td className="border border-black px-1 py-1 text-right">&nbsp;</td>
+                <td className="border border-black px-1 py-1 text-right font-medium">&nbsp;</td>
                 <td className="border border-black px-1 py-1 text-right">
-                  &nbsp;
+                  {bsm ? numFr(bsm.quantite_litres) : ''}
+                </td>
+                <td className="border border-black px-1 py-1 text-right">
+                  {bsm ? numFr(bsm.prix_litre) : ''}
+                </td>
+                <td className="border border-black px-1 py-1 text-right">
+                  {numFr(ligne.montant_gasoil)}
                 </td>
                 <td className="border border-black px-1 py-1 text-right font-medium">
-                  {numFr(ligneAffichage.montantNet)}
-                </td>
-                <td className="border border-black px-1 py-1 text-right">
-                  {estPremiere && totalQteGasoil > 0
-                    ? numFr(totalQteGasoil)
-                    : ''}
-                </td>
-                <td className="border border-black px-1 py-1 text-right">
-                  {estPremiere && prixLitreMoyen > 0
-                    ? numFr(prixLitreMoyen)
-                    : ''}
-                </td>
-                <td className="border border-black px-1 py-1 text-right">
-                  {estPremiere && totalGasoil > 0 ? numFr(totalGasoil) : ''}
-                </td>
-                <td className="border border-black px-1 py-1 text-right font-medium">
-                  {estPremiere && totalGasoil > 0
-                    ? `− ${numFr(netLigne)}`
-                    : numFr(ligne.montant_net)}
+                  − {numFr(ligne.montant_gasoil)}
                 </td>
               </tr>
             );
@@ -261,11 +275,9 @@ function FeuilletFacture({
         <tfoot>
           <tr className="bg-neutral-100 font-semibold">
             <td className="border border-black px-1 py-1 text-center">TOTAL</td>
-            <td className="border border-black px-1 py-1">&nbsp;</td>
             <td className="border border-black px-1 py-1 text-right">
               {tonnes(totalPoidsKg)}
             </td>
-            <td className="border border-black px-1 py-1">&nbsp;</td>
             <td className="border border-black px-1 py-1">&nbsp;</td>
             <td className="border border-black px-1 py-1">&nbsp;</td>
             <td className="border border-black px-1 py-1">&nbsp;</td>
@@ -275,7 +287,14 @@ function FeuilletFacture({
             <td className="border border-black px-1 py-1">&nbsp;</td>
             <td className="border border-black px-1 py-1">&nbsp;</td>
             <td className="border border-black px-1 py-1 text-right">
-              {totalGasoil > 0 ? numFr(totalGasoil) : ''}
+              {numFr(totalBrut)}
+            </td>
+            <td className="border border-black px-1 py-1 text-right">
+              {totalQteGasoil > 0 ? numFr(totalQteGasoil) : ''}
+            </td>
+            <td className="border border-black px-1 py-1">&nbsp;</td>
+            <td className="border border-black px-1 py-1 text-right">
+              {totalGasoil > 0 ? `− ${numFr(totalGasoil)}` : ''}
             </td>
             <td className="border border-black px-1 py-1 text-right font-bold">
               {numFr(totalNet)}
@@ -303,61 +322,43 @@ function FeuilletFacture({
               <th className="border border-black px-1.5 py-1 text-left font-semibold">
                 DISTANCE
               </th>
-              <th
-                colSpan={1}
-                className="border border-black px-1.5 py-1 text-center font-semibold"
-              >
-                FRET DIRECT
+              <th className="border border-black px-1.5 py-1 text-center font-semibold">
+                TYPE DE FRET
               </th>
-              <th
-                colSpan={2}
-                className="border border-black px-1.5 py-1 text-center font-semibold"
-              >
-                FRET RETOUR
+              <th className="border border-black px-1.5 py-1 text-center font-semibold">
+                TARIF
+              </th>
+              <th className="border border-black px-1.5 py-1 text-center font-semibold">
+                UNITÉ
               </th>
             </tr>
           </thead>
           <tbody>
-            <tr>
-              <td className="border border-black px-1.5 py-1">DE 0 à 65</td>
-              <td className="border border-black px-1.5 py-1 text-right">
-                12 937
-              </td>
-              <td className="border border-black px-1.5 py-1">&nbsp;</td>
-              <td className="border border-black px-1.5 py-1 text-right">
-                6 468
-              </td>
-            </tr>
-            <tr>
-              <td className="border border-black px-1.5 py-1">DE 66 à 90</td>
-              <td className="border border-black px-1.5 py-1 text-right">
-                14 513
-              </td>
-              <td className="border border-black px-1.5 py-1">&nbsp;</td>
-              <td className="border border-black px-1.5 py-1 text-right">
-                7 256
-              </td>
-            </tr>
-            <tr>
-              <td className="border border-black px-1.5 py-1">SUP à 90</td>
-              <td className="border border-black px-1.5 py-1 text-right">215</td>
-              <td className="border border-black px-1.5 py-1">&nbsp;</td>
-              <td className="border border-black px-1.5 py-1 text-right">
-                107,5
-              </td>
-            </tr>
-            <tr>
-              <td
-                colSpan={2}
-                className="border border-black px-1.5 py-1 font-semibold"
-              >
-                EVACUATION GRAINE
-              </td>
-              <td className="border border-black px-1.5 py-1 text-right">
-                87
-              </td>
-              <td className="border border-black px-1.5 py-1">&nbsp;</td>
-            </tr>
+            {(tarifs ?? []).map((tarif) => (
+              <tr key={tarif.id}>
+                <td className="border border-black px-1.5 py-1">
+                  {tarif.distance_max == null
+                    ? `${numFr(tarif.distance_min)} km et plus`
+                    : `${numFr(tarif.distance_min)} à ${numFr(tarif.distance_max)} km`}
+                </td>
+                <td className="border border-black px-1.5 py-1">
+                  {labelTypeFret(tarif.type_fret)}
+                </td>
+                <td className="border border-black px-1.5 py-1 text-right">
+                  {numFr(tarif.tarif, tarif.tarif % 1 === 0 ? 0 : 2)}
+                </td>
+                <td className="border border-black px-1.5 py-1 text-center">
+                  {tarif.unite_tarif === 'fcfa_tkm' ? 'FCFA/TKM' : 'FCFA/tonne'}
+                </td>
+              </tr>
+            ))}
+            {(!tarifs || tarifs.length === 0) && (
+              <tr>
+                <td colSpan={4} className="border border-black px-1.5 py-1 text-center">
+                  Aucun tarif enregistré pour cette campagne
+                </td>
+              </tr>
+            )}
           </tbody>
         </table>
       </div>

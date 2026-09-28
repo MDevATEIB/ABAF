@@ -46,6 +46,15 @@ pub struct TotauxRapport {
     pub solde_avances: f64,
 }
 
+/// Facture incluse dans le relevé imprimé d'une campagne.
+#[derive(Debug, Serialize)]
+pub struct FactureReleve {
+    pub numero: String,
+    pub date_facture: String,
+    pub usine: Option<String>,
+    pub montant_net: f64,
+}
+
 /// Récapitulatif des mouvements d'une campagne (AGENT.md §16).
 #[derive(Debug, Serialize)]
 pub struct Recapitulatif {
@@ -54,6 +63,7 @@ pub struct Recapitulatif {
     pub date_debut: String,
     pub date_fin: Option<String>,
     pub lignes: Vec<LigneRapport>,
+    pub factures: Vec<FactureReleve>,
     pub totaux: TotauxRapport,
 }
 

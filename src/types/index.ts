@@ -356,6 +356,14 @@ export interface TotauxRapport {
   solde_avances: number;
 }
 
+/** Facture et montant net réellement enregistré, affichés sur le relevé. */
+export interface FactureReleve {
+  numero: string;
+  date_facture: string;
+  usine?: string;
+  montant_net: number;
+}
+
 /** Récapitulatif des mouvements d'une campagne (AGENT.md §16). */
 export interface Recapitulatif {
   saison_id: number;
@@ -363,6 +371,7 @@ export interface Recapitulatif {
   date_debut: string;
   date_fin?: string;
   lignes: LigneRapport[];
+  factures: FactureReleve[];
   totaux: TotauxRapport;
 }
 
