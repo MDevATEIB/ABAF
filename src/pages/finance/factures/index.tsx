@@ -6,12 +6,13 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 
 import {
-  Button, Input, Select, Badge, Modal, ConfirmDialog,
+  Button, Input, Select, Badge, Modal, ConfirmDialog, Pagination,
   PageHeader, EmptyState, Spinner, ErrorMessage,
 } from '@/components/ui';
 import {
   useFactures, useLignesFacture, useCreerFacture, useValiderFacture, useSupprimerFacture,
   useOperationsDisponibles, useClients, useSaisons, useTarifs, useCamions,
+  usePagination, useProchainNumero,
 } from '@/hooks';
 import type {
   BSM, Bordereau, Camion, Client, Facture, Saison, StatutFacture, Tarif, TypeFret,
@@ -90,8 +91,18 @@ function raisonNonSelectionnable(b: Bordereau, tarifs: Tarif[]): string | null {
 }
 
 // ─── Schéma de validation ─────────────────────────────────────────────────────
+type FormValues = {
+  numero: string;
+  saison_id: number;
+  client_id: number;
+  date_facture: string;
+  observations?: string;
+  mention_original_payable: boolean;
+};
 const schema = z.object({
-  numero:       z.string().min(1, 'Le numéro est requis'),
+  /** Numéro de facture. Laisser vide pour génération automatique
+   *  par année (format `2026-0138`, backend). */
+  numero:       z.string().default(''),
   saison_id:    z.coerce.number({ invalid_type_error: 'La campagne est requise' }).min(1, 'La campagne est requise'),
   client_id:    z.coerce.number({ invalid_type_error: 'Le client est requis' }).min(1, 'Le client est requis'),
   date_facture: z.string().min(1, 'La date est requise'),
@@ -99,7 +110,6 @@ const schema = z.object({
   /** Mention « ORIGINAL PAYABLE » imprimée sur l'exemplaire original (CDC v1.1). */
   mention_original_payable: z.boolean(),
 });
-type FormValues = z.infer<typeof schema>;
 
 // ─── Formulaire de création (sélection des opérations) ────────────────────────
 interface FactureFormProps {
@@ -116,12 +126,23 @@ interface FactureFormProps {
 function FactureForm({
   defaultValues, onSubmit, loading, error, onCancel, saisons, clients, camions,
 }: FactureFormProps) {
-  const { register, handleSubmit, watch, formState: { errors } } = useForm<FormValues>({
-    resolver: zodResolver(schema),
+  const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm<FormValues>({
+    resolver: zodResolver(schema) as any,
     defaultValues,
   });
 
   const saisonId = Number(watch('saison_id')) || 0;
+  const dateFacture = watch('date_facture') || new Date().toISOString().slice(0, 10);
+  const numeroManuel = watch('numero') ?? '';
+
+  const { data: prochainNumero } = useProchainNumero('factures', dateFacture);
+  const numeroAuto = prochainNumero ?? '2026-0001';
+
+  useEffect(() => {
+    if (!numeroManuel && prochainNumero) {
+      setValue('numero', prochainNumero, { shouldDirty: false, shouldValidate: false });
+    }
+  }, [prochainNumero]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const { data: operations, isLoading: operationsLoading } = useOperationsDisponibles(
     saisonId || undefined,
@@ -226,7 +247,8 @@ function FactureForm({
         />
         <Input
           label="Numéro de la facture"
-          placeholder="Ex. : F-2026-001"
+          placeholder={numeroAuto}
+          hint={`Laisser vide pour générer automatiquement (${numeroAuto}).`}
           error={errors.numero?.message}
           {...register('numero')}
         />
@@ -450,6 +472,8 @@ export default function FacturesPage() {
 
   const { data: lignesLecture, isLoading: lignesLectureLoading } = useLignesFacture(viewing?.id);
 
+  const pagination = usePagination(factures);
+
   // Correspondances id → libellé pour l'affichage
   const saisonMap = useMemo(() => new Map(saisons.map((s) => [s.id, s.libelle])), [saisons]);
   const clientMap = useMemo(() => new Map(clients.map((c) => [c.id, c.nom])), [clients]);
@@ -464,8 +488,9 @@ export default function FacturesPage() {
   ) {
     setMutationError(null);
     try {
+      const numero = (values.numero ?? '').trim();
       await creer.mutateAsync({
-        numero:        values.numero,
+        numero:        numero ? numero : null,
         saison_id:     values.saison_id,
         client_id:     values.client_id,
         date_facture:  values.date_facture,
@@ -537,14 +562,14 @@ export default function FacturesPage() {
             ...saisons.map((s) => ({ value: s.id, label: s.libelle })),
           ]}
           value={filtreSaisonId ?? 0}
-          onChange={(e) => setFiltreSaisonId(Number(e.target.value) || undefined)}
+          onChange={(e) => { setFiltreSaisonId(Number(e.target.value) || undefined); pagination.reset(); }}
           className="w-56"
         />
         <Select
           label="Statut"
           options={[{ value: '', label: 'Tous les statuts' }, ...STATUTS_FACTURE]}
           value={filtreStatut ?? ''}
-          onChange={(e) => setFiltreStatut((e.target.value || undefined) as StatutFacture | undefined)}
+          onChange={(e) => { setFiltreStatut((e.target.value || undefined) as StatutFacture | undefined); pagination.reset(); }}
           className="w-56"
         />
       </div>
@@ -580,7 +605,7 @@ export default function FacturesPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
-              {factures.map((f) => (
+              {pagination.items.map((f) => (
                 <tr key={f.id} className="hover:bg-muted/30 transition-colors">
                   <td className="px-4 py-3 text-muted-foreground">{formatDate(f.date_facture)}</td>
                   <td className="px-4 py-3 font-medium text-foreground">{f.numero}</td>
@@ -650,6 +675,16 @@ export default function FacturesPage() {
           </table>
         </div>
       )}
+
+      <Pagination
+        page={pagination.page}
+        totalPages={pagination.totalPages}
+        totalItems={pagination.totalItems}
+        pageSize={pagination.pageSize}
+        onPageChange={pagination.goToPage}
+        onPageSizeChange={pagination.setPageSize}
+        className="mt-2"
+      />
 
       {/* ── Modal création ─────────────────────────────────────────────────── */}
       <Modal

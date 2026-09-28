@@ -1,7 +1,8 @@
-﻿// Commandes Tauri - module bsm (Phase 3)
+// Commandes Tauri - module BSM (Phase 3)
 use crate::db::AppState;
 use crate::models::bsm::{index_statut_bsm, CreerBsmPayload, ModifierBsmPayload, BSM};
 use crate::models::mission::avancer_statut_mission;
+use crate::utils::generer_numero_document;
 use tauri::State;
 
 /// Liste les BSM, avec filtres optionnels par saison et par statut.
@@ -54,6 +55,8 @@ pub fn lister_bsm(
 
 /// Crée un BSM (statut initial : ouvert).
 /// Le montant (quantité × prix au litre) est calculé par la base.
+/// Le numéro est attribué automatiquement (par année) si celui du payload
+/// est absent ou vide.
 #[tauri::command]
 pub fn creer_bsm(state: State<AppState>, payload: CreerBsmPayload) -> Result<BSM, String> {
     let db = state.db.lock().map_err(|e| e.to_string())?;
@@ -64,7 +67,19 @@ pub fn creer_bsm(state: State<AppState>, payload: CreerBsmPayload) -> Result<BSM
     if payload.prix_litre <= 0.0 {
         return Err("Le prix au litre doit être supérieur à 0.".into());
     }
-    verifier_numero_disponible(&db, &payload.numero, None)?;
+
+    let numero = payload
+        .numero
+        .as_ref()
+        .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty());
+    let numero = match numero {
+        Some(n) => {
+            verifier_numero_disponible(&db, &n, None)?;
+            n
+        }
+        None => generer_numero_document(&db, "bsm", "date_bsm", "numero", payload.date_bsm.as_str())?,
+    };
 
     let camion_existe: i64 = db
         .query_row(
@@ -77,7 +92,9 @@ pub fn creer_bsm(state: State<AppState>, payload: CreerBsmPayload) -> Result<BSM
         return Err("Camion introuvable.".into());
     }
 
-    // Règle : le gasoil se prend après la pesée à vide du camion (AGENT.md §4).
+    // Règle : si le BSM est rattaché à une mission, vérifier son existence.
+    // (La pesée à vide n'est plus requise : la tare est connue via la
+    //  capacité enregistrée sur le camion : tare = capacité_tonnes × 1000.)
     if let Some(mission_id) = payload.mission_id {
         let existe: i64 = db
             .query_row(
@@ -89,19 +106,6 @@ pub fn creer_bsm(state: State<AppState>, payload: CreerBsmPayload) -> Result<BSM
         if existe == 0 {
             return Err("Mission introuvable.".into());
         }
-
-        let nb_pesees_vide: i64 = db
-            .query_row(
-                "SELECT COUNT(*) FROM pesees WHERE mission_id = ?1 AND type_pesee = 'vide'",
-                rusqlite::params![mission_id],
-                |row| row.get(0),
-            )
-            .map_err(|e| e.to_string())?;
-        if nb_pesees_vide == 0 {
-            return Err(
-                "Enregistrez d'abord la pesée à vide du camion avant de créer le BSM.".into(),
-            );
-        }
     }
 
     db.execute(
@@ -110,7 +114,7 @@ pub fn creer_bsm(state: State<AppState>, payload: CreerBsmPayload) -> Result<BSM
                           reference, statut)
          VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, 'ouvert')",
         rusqlite::params![
-            payload.numero,
+            numero,
             payload.saison_id,
             payload.mission_id,
             payload.camion_id,

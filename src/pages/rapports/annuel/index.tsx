@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import { FileText } from 'lucide-react';
 
-import { Badge, Select, PageHeader, EmptyState, Spinner, ErrorMessage } from '@/components/ui';
-import { useRapportAnnuel, useSaisons } from '@/hooks';
+import { Badge, Select, PageHeader, EmptyState, Spinner, ErrorMessage, Pagination } from '@/components/ui';
+import { useRapportAnnuel, useSaisons, usePagination } from '@/hooks';
 import type { LigneRapport } from '@/types';
 import { formatDate, formatDistance, formatFCFA, formatKg, formatLitres } from '@/utils';
+
 
 // ─── Statuts affichés ─────────────────────────────────────────────────────────
 const STATUTS_BSM: Record<string, { label: string; variant: 'success' | 'warning' | 'muted' }> = {
@@ -94,6 +95,20 @@ export default function RapportAnnuelPage() {
   const { data: saisons = [] } = useSaisons();
   const { data, isLoading, error } = useRapportAnnuel(filtreSaisonId);
 
+  const lignes    = data?.lignes    ?? [];
+  const bsms      = data?.bsms      ?? [];
+  const paiements = data?.paiements ?? [];
+
+  const pagLignes    = usePagination(lignes);
+  const pagBsm       = usePagination(bsms);
+  const pagPaiements = usePagination(paiements);
+
+  const resetAllPagination = () => {
+    pagLignes.reset();
+    pagBsm.reset();
+    pagPaiements.reset();
+  };
+
   const messageErreur = error ? (error instanceof Error ? error.message : String(error)) : null;
 
   return (
@@ -115,7 +130,7 @@ export default function RapportAnnuelPage() {
             })),
           ]}
           value={filtreSaisonId ?? 0}
-          onChange={(e) => setFiltreSaisonId(Number(e.target.value) || undefined)}
+          onChange={(e) => { setFiltreSaisonId(Number(e.target.value) || undefined); resetAllPagination(); }}
           className="w-64"
         />
       </div>
@@ -125,7 +140,7 @@ export default function RapportAnnuelPage() {
       ) : messageErreur ? (
         <ErrorMessage message={messageErreur} className="mt-4" />
       ) : data ? (
-        data.lignes.length === 0 ? (
+        lignes.length === 0 ? (
           <EmptyState
             icon={<FileText size={40} />}
             title="Aucune opération pour cette campagne"
@@ -159,7 +174,16 @@ export default function RapportAnnuelPage() {
             {/* ── Tableau des opérations ──────────────────────────────────── */}
             <h3 className="mb-2 text-sm font-medium text-muted-foreground">Tableau des opérations</h3>
             <div className="mb-6">
-              <TableauOperations lignes={data.lignes} />
+              <TableauOperations lignes={pagLignes.items} />
+              <Pagination
+                page={pagLignes.page}
+                totalPages={pagLignes.totalPages}
+                totalItems={pagLignes.totalItems}
+                pageSize={pagLignes.pageSize}
+                onPageChange={pagLignes.goToPage}
+                onPageSizeChange={pagLignes.setPageSize}
+                className="mt-2"
+              />
             </div>
 
             {/* ── Données de gasoil et BMS ────────────────────────────────── */}
@@ -169,77 +193,99 @@ export default function RapportAnnuelPage() {
               <Carte label="Quantité de gasoil" valeur={formatLitres(data.totaux.gasoil_litres)} />
               <Carte label="Montant gasoil" valeur={formatFCFA(data.totaux.gasoil_montant)} />
             </div>
-            {data.bsms.length === 0 ? (
+            {bsms.length === 0 ? (
               <p className="mb-6 text-sm text-muted-foreground">Aucun BSM pour cette campagne.</p>
             ) : (
-              <div className="mb-6 overflow-x-auto rounded-lg border border-border">
-                <table className="w-full text-sm">
-                  <thead className="bg-muted/50">
-                    <tr>
-                      <th className="px-4 py-3 text-left font-medium text-muted-foreground">N° BSM</th>
-                      <th className="px-4 py-3 text-left font-medium text-muted-foreground">Date</th>
-                      <th className="px-4 py-3 text-left font-medium text-muted-foreground">Camion</th>
-                      <th className="px-4 py-3 text-left font-medium text-muted-foreground">Bénéficiaire</th>
-                      <th className="px-4 py-3 text-right font-medium text-muted-foreground">Litres</th>
-                      <th className="px-4 py-3 text-right font-medium text-muted-foreground">Montant</th>
-                      <th className="px-4 py-3 text-left font-medium text-muted-foreground">Statut</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-border">
-                    {data.bsms.map((b) => {
-                      const statut = STATUTS_BSM[b.statut] ?? { label: b.statut, variant: 'muted' as const };
-                      return (
-                        <tr key={b.numero} className="hover:bg-muted/30 transition-colors">
-                          <td className="px-4 py-3 font-medium text-foreground">{b.numero}</td>
-                          <td className="px-4 py-3 text-muted-foreground">{formatDate(b.date_bsm)}</td>
-                          <td className="px-4 py-3 text-muted-foreground">{b.camion ?? '—'}</td>
-                          <td className="px-4 py-3 text-muted-foreground">{b.beneficiaire || '—'}</td>
-                          <td className="px-4 py-3 text-right text-foreground">{formatLitres(b.quantite_litres)}</td>
-                          <td className="px-4 py-3 text-right font-medium text-foreground">{formatFCFA(b.montant)}</td>
-                          <td className="px-4 py-3">
-                            <Badge variant={statut.variant}>{statut.label}</Badge>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
+              <div className="mb-6">
+                <div className="overflow-x-auto rounded-lg border border-border">
+                  <table className="w-full text-sm">
+                    <thead className="bg-muted/50">
+                      <tr>
+                        <th className="px-4 py-3 text-left font-medium text-muted-foreground">N° BSM</th>
+                        <th className="px-4 py-3 text-left font-medium text-muted-foreground">Date</th>
+                        <th className="px-4 py-3 text-left font-medium text-muted-foreground">Camion</th>
+                        <th className="px-4 py-3 text-left font-medium text-muted-foreground">Bénéficiaire</th>
+                        <th className="px-4 py-3 text-right font-medium text-muted-foreground">Litres</th>
+                        <th className="px-4 py-3 text-right font-medium text-muted-foreground">Montant</th>
+                        <th className="px-4 py-3 text-left font-medium text-muted-foreground">Statut</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border">
+                      {pagBsm.items.map((b) => {
+                        const statut = STATUTS_BSM[b.statut] ?? { label: b.statut, variant: 'muted' as const };
+                        return (
+                          <tr key={b.numero} className="hover:bg-muted/30 transition-colors">
+                            <td className="px-4 py-3 font-medium text-foreground">{b.numero}</td>
+                            <td className="px-4 py-3 text-muted-foreground">{formatDate(b.date_bsm)}</td>
+                            <td className="px-4 py-3 text-muted-foreground">{b.camion ?? '—'}</td>
+                            <td className="px-4 py-3 text-muted-foreground">{b.beneficiaire || '—'}</td>
+                            <td className="px-4 py-3 text-right text-foreground">{formatLitres(b.quantite_litres)}</td>
+                            <td className="px-4 py-3 text-right font-medium text-foreground">{formatFCFA(b.montant)}</td>
+                            <td className="px-4 py-3">
+                              <Badge variant={statut.variant}>{statut.label}</Badge>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+                <Pagination
+                  page={pagBsm.page}
+                  totalPages={pagBsm.totalPages}
+                  totalItems={pagBsm.totalItems}
+                  pageSize={pagBsm.pageSize}
+                  onPageChange={pagBsm.goToPage}
+                  onPageSizeChange={pagBsm.setPageSize}
+                  className="mt-2"
+                />
               </div>
             )}
 
             {/* ── Règlements ──────────────────────────────────────────────── */}
             <h3 className="mb-2 text-sm font-medium text-muted-foreground">Règlements</h3>
-            {data.paiements.length === 0 ? (
+            {paiements.length === 0 ? (
               <p className="mb-6 text-sm text-muted-foreground">Aucun règlement enregistré pour cette campagne.</p>
             ) : (
-              <div className="mb-6 overflow-x-auto rounded-lg border border-border">
-                <table className="w-full text-sm">
-                  <thead className="bg-muted/50">
-                    <tr>
-                      <th className="px-4 py-3 text-left font-medium text-muted-foreground">Date</th>
-                      <th className="px-4 py-3 text-left font-medium text-muted-foreground">N° Facture</th>
-                      <th className="px-4 py-3 text-right font-medium text-muted-foreground">Montant</th>
-                      <th className="px-4 py-3 text-left font-medium text-muted-foreground">Mode</th>
-                      <th className="px-4 py-3 text-left font-medium text-muted-foreground">Statut</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-border">
-                    {data.paiements.map((p, index) => {
-                      const statut = STATUTS_PAIEMENT[p.statut] ?? { label: p.statut, variant: 'muted' as const };
-                      return (
-                        <tr key={`${p.date_paiement}-${index}`} className="hover:bg-muted/30 transition-colors">
-                          <td className="px-4 py-3 text-muted-foreground">{formatDate(p.date_paiement)}</td>
-                          <td className="px-4 py-3 font-medium text-foreground">{p.numero_facture ?? '—'}</td>
-                          <td className="px-4 py-3 text-right font-medium text-foreground">{formatFCFA(p.montant)}</td>
-                          <td className="px-4 py-3 text-muted-foreground">{p.mode_paiement || '—'}</td>
-                          <td className="px-4 py-3">
-                            <Badge variant={statut.variant}>{statut.label}</Badge>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
+              <div className="mb-6">
+                <div className="overflow-x-auto rounded-lg border border-border">
+                  <table className="w-full text-sm">
+                    <thead className="bg-muted/50">
+                      <tr>
+                        <th className="px-4 py-3 text-left font-medium text-muted-foreground">Date</th>
+                        <th className="px-4 py-3 text-left font-medium text-muted-foreground">N° Facture</th>
+                        <th className="px-4 py-3 text-right font-medium text-muted-foreground">Montant</th>
+                        <th className="px-4 py-3 text-left font-medium text-muted-foreground">Mode</th>
+                        <th className="px-4 py-3 text-left font-medium text-muted-foreground">Statut</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border">
+                      {pagPaiements.items.map((p, index) => {
+                        const statut = STATUTS_PAIEMENT[p.statut] ?? { label: p.statut, variant: 'muted' as const };
+                        return (
+                          <tr key={`${p.date_paiement}-${index}`} className="hover:bg-muted/30 transition-colors">
+                            <td className="px-4 py-3 text-muted-foreground">{formatDate(p.date_paiement)}</td>
+                            <td className="px-4 py-3 font-medium text-foreground">{p.numero_facture ?? '—'}</td>
+                            <td className="px-4 py-3 text-right font-medium text-foreground">{formatFCFA(p.montant)}</td>
+                            <td className="px-4 py-3 text-muted-foreground">{p.mode_paiement || '—'}</td>
+                            <td className="px-4 py-3">
+                              <Badge variant={statut.variant}>{statut.label}</Badge>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+                <Pagination
+                  page={pagPaiements.page}
+                  totalPages={pagPaiements.totalPages}
+                  totalItems={pagPaiements.totalItems}
+                  pageSize={pagPaiements.pageSize}
+                  onPageChange={pagPaiements.goToPage}
+                  onPageSizeChange={pagPaiements.setPageSize}
+                  className="mt-2"
+                />
               </div>
             )}
 

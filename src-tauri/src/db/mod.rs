@@ -49,6 +49,14 @@ fn appliquer_migrations_versionnees(conn: &Connection) -> Result<()> {
         migration_v1(conn)?;
         conn.execute_batch("PRAGMA user_version = 1")?;
     }
+    if version < 2 {
+        migration_v2(conn)?;
+        conn.execute_batch("PRAGMA user_version = 2")?;
+    }
+    if version < 3 {
+        migration_v3(conn)?;
+        conn.execute_batch("PRAGMA user_version = 3")?;
+    }
     Ok(())
 }
 
@@ -107,6 +115,31 @@ fn migration_v1(conn: &Connection) -> Result<()> {
         )?;
     }
 
+    Ok(())
+}
+
+/// Migration v2 : ajoute `distance_km` sur `lignes_bordereau` pour le calcul
+/// ligne-par-ligne des TKM (CDC v1.1). Idempotente : ne fait rien si la
+/// colonne existe déjà (bases créées après intégration du schéma corrigé).
+fn migration_v2(conn: &Connection) -> Result<()> {
+    if !colonne_existe(conn, "lignes_bordereau", "distance_km")? {
+        conn.execute_batch(
+            "ALTER TABLE lignes_bordereau ADD COLUMN distance_km REAL NULL;",
+        )?;
+    }
+    Ok(())
+}
+
+/// Migration v3 (Refonte Bordereau Système Global) :
+/// - `bordereaux` : ajout colonne `bsm_id` FK vers `bsm(id)` pour lier 0 ou 1 BSM
+///   auto-généré via la section gasoil du formulaire bordereau.
+fn migration_v3(conn: &Connection) -> Result<()> {
+    if !colonne_existe(conn, "bordereaux", "bsm_id")? {
+        conn.execute_batch(
+            "ALTER TABLE bordereaux ADD COLUMN bsm_id INTEGER NULL REFERENCES bsm(id);
+             CREATE INDEX IF NOT EXISTS idx_bordereaux_bsm_id ON bordereaux(bsm_id);",
+        )?;
+    }
     Ok(())
 }
 

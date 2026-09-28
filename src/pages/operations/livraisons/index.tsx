@@ -2,10 +2,11 @@ import { useMemo, useState } from 'react';
 import { Truck } from 'lucide-react';
 
 import {
-  Select, Badge, PageHeader, EmptyState, Spinner, ErrorMessage,
+  Select, Badge, PageHeader, EmptyState, Spinner, ErrorMessage, Pagination,
 } from '@/components/ui';
 import {
   useBordereaux, useSyntheseLivraisons, useSaisons, useCamions, useUsines, useAvs,
+  usePagination,
 } from '@/hooks';
 import type { StatutBordereau } from '@/types';
 import { formatDate, formatKg } from '@/utils';
@@ -47,6 +48,7 @@ export default function LivraisonsPage() {
 
   // Livraisons = bordereaux validés ou facturés (jamais les brouillons)
   const livraisons = bordereaux.filter((b) => b.statut !== 'brouillon');
+  const pagination = usePagination(livraisons);
 
   if (isLoading || syntheseLoading) return <Spinner className="mt-16" />;
   if (error) return <ErrorMessage message="Impossible de charger les livraisons." className="mt-4" />;
@@ -67,7 +69,7 @@ export default function LivraisonsPage() {
             ...saisons.map((s) => ({ value: s.id, label: s.libelle })),
           ]}
           value={filtreSaisonId ?? 0}
-          onChange={(e) => setFiltreSaisonId(Number(e.target.value) || undefined)}
+          onChange={(e) => { setFiltreSaisonId(Number(e.target.value) || undefined); pagination.reset(); }}
           className="w-56"
         />
       </div>
@@ -106,7 +108,7 @@ export default function LivraisonsPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {livraisons.map((b) => (
+                {pagination.items.map((b) => (
                   <tr key={b.id} className="hover:bg-muted/30 transition-colors">
                     <td className="px-4 py-3 text-muted-foreground">{formatDate(b.date_bordereau)}</td>
                     <td className="px-4 py-3 font-medium text-foreground">{b.numero}</td>
@@ -130,6 +132,16 @@ export default function LivraisonsPage() {
               </tbody>
             </table>
           </div>
+
+          <Pagination
+            page={pagination.page}
+            totalPages={pagination.totalPages}
+            totalItems={pagination.totalItems}
+            pageSize={pagination.pageSize}
+            onPageChange={pagination.goToPage}
+            onPageSizeChange={pagination.setPageSize}
+            className="mt-2"
+          />
 
           {/* ── Totaux par camion et par AV ─────────────────────────────────── */}
           <div className="mt-6 grid gap-4 lg:grid-cols-2">

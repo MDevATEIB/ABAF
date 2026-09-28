@@ -5,17 +5,19 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 
 import {
-  Button, Input, Select, Badge, Modal, ConfirmDialog,
+  Button, Input, Select, Badge, Modal, ConfirmDialog, Pagination,
   PageHeader, EmptyState, Spinner, ErrorMessage,
 } from '@/components/ui';
 import {
   useMissions, usePeseesMission, useCreerPesee, useSupprimerPesee,
-  useSaisons, useCamions, useChauffeurs, useUsines,
+  useSaisons, useCamions, useChauffeurs, useUsines, usePagination,
 } from '@/hooks';
+
 import type { Mission, Pesee, TypePesee } from '@/types';
 import {
   calculPoidsNet, formatDate, formatKg,
   labelStatutMission, varianteStatutMission,
+  capaciteToPoidsVideKg,
 } from '@/utils';
 
 // ─── Libellés des types de pesée ──────────────────────────────────────────────
@@ -124,6 +126,8 @@ export default function PeseesPage() {
   const creer     = useCreerPesee();
   const supprimer = useSupprimerPesee();
 
+  const pagination = usePagination(missions);
+
   // Correspondances id → libellé pour l'affichage
   const saisonMap    = useMemo(() => new Map(saisons.map((s) => [s.id, s.libelle])), [saisons]);
   const camionMap    = useMemo(() => new Map(camions.map((c) => [c.id, c.immatriculation])), [camions]);
@@ -138,6 +142,11 @@ export default function PeseesPage() {
   const poidsNet    = peseeVide && peseeCharge
     ? calculPoidsNet(peseeCharge.poids_kg, peseeVide.poids_kg)
     : null;
+
+  const camionMission = missionActive
+    ? camions.find((c) => c.id === missionActive.camion_id)
+    : undefined;
+  const tareCamionKg = capaciteToPoidsVideKg(camionMission?.capacite_tonnes);
 
   // ── Ouverture du détail d'une mission ─────────────────────────────────────
   function ouvrirMission(mission: Mission) {
@@ -203,7 +212,7 @@ export default function PeseesPage() {
             ...saisons.map((s) => ({ value: s.id, label: s.libelle })),
           ]}
           value={filtreSaisonId ?? 0}
-          onChange={(e) => setFiltreSaisonId(Number(e.target.value) || undefined)}
+          onChange={(e) => { setFiltreSaisonId(Number(e.target.value) || undefined); pagination.reset(); }}
           className="w-56"
         />
       </div>
@@ -216,21 +225,22 @@ export default function PeseesPage() {
           description="Les pesées se saisissent depuis une mission. Créez d'abord une mission dans le module Missions."
         />
       ) : (
-        <div className="overflow-x-auto rounded-lg border border-border">
-          <table className="w-full text-sm">
-            <thead className="bg-muted/50">
-              <tr>
-                <th className="px-4 py-3 text-left font-medium text-muted-foreground">Date</th>
-                <th className="px-4 py-3 text-left font-medium text-muted-foreground">Camion</th>
-                <th className="px-4 py-3 text-left font-medium text-muted-foreground">Chauffeur</th>
-                <th className="px-4 py-3 text-left font-medium text-muted-foreground">Campagne</th>
-                <th className="px-4 py-3 text-left font-medium text-muted-foreground">Usine</th>
-                <th className="px-4 py-3 text-left font-medium text-muted-foreground">Statut</th>
-                <th className="px-4 py-3 text-right font-medium text-muted-foreground">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {missions.map((m) => (
+        <>
+          <div className="overflow-x-auto rounded-lg border border-border">
+            <table className="w-full text-sm">
+              <thead className="bg-muted/50">
+                <tr>
+                  <th className="px-4 py-3 text-left font-medium text-muted-foreground">Date</th>
+                  <th className="px-4 py-3 text-left font-medium text-muted-foreground">Camion</th>
+                  <th className="px-4 py-3 text-left font-medium text-muted-foreground">Chauffeur</th>
+                  <th className="px-4 py-3 text-left font-medium text-muted-foreground">Campagne</th>
+                  <th className="px-4 py-3 text-left font-medium text-muted-foreground">Usine</th>
+                  <th className="px-4 py-3 text-left font-medium text-muted-foreground">Statut</th>
+                  <th className="px-4 py-3 text-right font-medium text-muted-foreground">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {pagination.items.map((m) => (
                 <tr key={m.id} className="hover:bg-muted/30 transition-colors">
                   <td className="px-4 py-3 text-muted-foreground">{formatDate(m.date_mission)}</td>
                   <td className="px-4 py-3 font-medium text-foreground">
@@ -263,6 +273,15 @@ export default function PeseesPage() {
             </tbody>
           </table>
         </div>
+        <Pagination
+          page={pagination.page}
+          totalPages={pagination.totalPages}
+          totalItems={pagination.totalItems}
+          pageSize={pagination.pageSize}
+          onPageChange={pagination.goToPage}
+          onPageSizeChange={pagination.setPageSize}
+        />
+        </>
       )}
 
       {/* ── Modal détail / saisie ──────────────────────────────────────────── */}
@@ -325,16 +344,7 @@ export default function PeseesPage() {
             <div className="flex items-center justify-between">
               <h3 className="text-sm font-medium text-foreground">Pesées de la mission</h3>
               <div className="flex gap-2">
-                {!peseesLoading && !peseeVide && (
-                  <Button
-                    size="sm"
-                    icon={<Plus size={14} />}
-                    onClick={() => { setMutationError(null); setAjoutType('vide'); }}
-                  >
-                    Pesée à vide
-                  </Button>
-                )}
-                {!peseesLoading && peseeVide && !peseeCharge && (
+                {!peseesLoading && !peseeCharge && (
                   <Button
                     size="sm"
                     icon={<Plus size={14} />}
@@ -343,6 +353,25 @@ export default function PeseesPage() {
                     Pesée chargée
                   </Button>
                 )}
+              </div>
+            </div>
+
+            {/* Tare camion (capacité) */}
+            <div className="rounded-lg border border-primary/20 bg-primary/5 p-3">
+              <div className="flex items-start gap-3">
+                <div className="flex-1">
+                  <p className="text-xs font-medium text-muted-foreground">
+                    Tare du camion (capacité enregistrée)
+                  </p>
+                  <p className="mt-0.5 text-sm font-semibold text-foreground">
+                    {tareCamionKg != null
+                      ? `${formatKg(tareCamionKg)} (${camionMission?.capacite_tonnes ?? 0} t)`
+                      : '— Camion sans capacité enregistrée —'}
+                  </p>
+                  <p className="mt-1 text-[11px] text-muted-foreground">
+                    Cette valeur est utilisée automatiquement comme poids à vide lors de la validation du bordereau.
+                  </p>
+                </div>
               </div>
             </div>
 

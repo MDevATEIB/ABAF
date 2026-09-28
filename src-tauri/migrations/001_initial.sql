@@ -205,6 +205,7 @@ CREATE TABLE IF NOT EXISTS lignes_bordereau (
     av_id           INTEGER REFERENCES avs(id),
     localite        TEXT,
     poids_kg        REAL    NOT NULL CHECK (poids_kg >= 0),
+    distance_km     REAL,
     code            TEXT,
     observations    TEXT
 );

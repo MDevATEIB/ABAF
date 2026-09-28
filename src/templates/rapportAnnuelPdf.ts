@@ -144,11 +144,60 @@ function libelleStatutPaiement(statut: string): string {
 export function genererRapportPdf(rapport: RapportAnnuel): jsPDF {
   const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
 
-  // ── En-tête du document ──
+  // ── En-tête ABAF officiel ──
+  const DROITE = LARGEUR_PAGE - MARGE;
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(11);
+  doc.setTextColor(20, 20, 20);
+  doc.text('ABAF.SARL', MARGE, 9);
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(7);
+  doc.setTextColor(20, 20, 20);
+  const activites = [
+    'TRANSPORT ET TRANSIT',
+    'COMMERCE GENERAL-IMPORT-EXPORT',
+    'COMMISSIONNAIRE ET TRANSPORT',
+    'CONSTRUCTION ET REFECTION-GENIE CIVIL',
+  ];
+  let yInfo = 9;
+  for (const ligne of activites) {
+    doc.text(assainir(ligne), DROITE, yInfo, { align: 'right' });
+    yInfo += 3;
+  }
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(6.5);
+  doc.setTextColor(30, 30, 30);
+  doc.text('RCCMTC-MOU2016 E0152  NIF : 60008772', DROITE, yInfo, { align: 'right' });
+  yInfo += 3;
+  doc.text('BP : 050  Tél : 66 21 38 55 / 99 59 71 07', DROITE, yInfo, { align: 'right' });
+  yInfo += 3;
+  doc.text(
+    assainir("Siège social : Moundou (Représentations N'djaména, Abéché, Sarh, Koumra, Doba, Kélo, Pala, N'gaoundéré)"),
+    DROITE,
+    yInfo,
+    { align: 'right' }
+  );
+  yInfo += 3;
+  doc.text(
+    'Comptes : Ecobank 03213961801-16 ; BAC 37100746001-03 ; Orabank 20654600201-70 ; CBT 37140329301-66',
+    DROITE,
+    yInfo,
+    { align: 'right' }
+  );
+  yInfo += 4;
+
+  doc.setDrawColor(0, 0, 0);
+  doc.setLineWidth(0.5);
+  doc.line(MARGE, yInfo, DROITE, yInfo);
+  yInfo += 2;
+
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(13);
   doc.setTextColor(20, 20, 20);
-  doc.text('ABAF SARL - Rapport annuel', LARGEUR_PAGE / 2, 14, { align: 'center' });
+  doc.text('Rapport annuel', LARGEUR_PAGE / 2, yInfo + 5, { align: 'center' });
 
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(9);
@@ -156,9 +205,9 @@ export function genererRapportPdf(rapport: RapportAnnuel): jsPDF {
   const periode = rapport.date_fin
     ? `Campagne ${rapport.saison_libelle} - du ${formatDate(rapport.date_debut)} au ${formatDate(rapport.date_fin)}`
     : `Campagne ${rapport.saison_libelle} - du ${formatDate(rapport.date_debut)} (en cours)`;
-  doc.text(assainir(periode), LARGEUR_PAGE / 2, 19.5, { align: 'center' });
+  doc.text(assainir(periode), LARGEUR_PAGE / 2, yInfo + 10.5, { align: 'center' });
 
-  let y = 26;
+  let y = yInfo + 17;
 
   // ── Tableau des opérations (colonnes AGENT.md §7.2) ──
   y = titreSection(doc, y, 'Tableau des opérations');

@@ -56,6 +56,33 @@ pub fn calculer(
     })
 }
 
+/// Calcule le montant brut total pour plusieurs lignes (chacune avec son
+/// propre poids et sa propre distance). Agrège ligne par ligne. Le tarif
+/// appliqué et l'unité retournés correspondent à la PREMIÈRE ligne
+/// (informative, pour compatibilité avec l'en-tête bordereau/facture).
+pub fn calculer_par_lignes(
+    conn: &Connection,
+    saison_id: i64,
+    type_fret: &str,
+    lignes: &[(f64, f64)],
+) -> Result<CalculTarif, String> {
+    if lignes.is_empty() {
+        return Err("Aucune ligne fournie pour le calcul tarifaire.".into());
+    }
+    let mut montant_total = 0.0;
+    let mut premier: Option<CalculTarif> = None;
+    for (poids_kg, distance_km) in lignes {
+        let c = calculer(conn, saison_id, type_fret, *distance_km, *poids_kg)?;
+        montant_total += c.montant_brut;
+        if premier.is_none() {
+            premier = Some(c);
+        }
+    }
+    let mut base = premier.unwrap();
+    base.montant_brut = montant_total;
+    Ok(base)
+}
+
 /// Tranche applicable : celle qui contient la distance, bornes incluses
 /// (requête de référence du CDC). `distance_max` NULL = tranche ouverte.
 pub fn trouver_tranche(

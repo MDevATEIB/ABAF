@@ -12,7 +12,9 @@ export interface FiltresFactures {
 }
 
 export interface CreerFactureInput {
-  numero: string;
+  /** Numéro de facture. Optionnel : si absent/vide, le backend attribue
+   *  une valeur séquentielle par année (format `2026-0138`). */
+  numero?: string | null;
   saison_id: number;
   client_id: number;
   date_facture: string;

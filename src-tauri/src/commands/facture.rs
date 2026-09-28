@@ -1,9 +1,10 @@
-﻿// Commandes Tauri - module facture (Phase 4)
+//﻿// Commandes Tauri - module facture (Phase 4)
 use crate::db::AppState;
 use crate::models::bsm::index_statut_bsm;
 use crate::models::facture::{CreerFacturePayload, Facture, LigneFacture, OperationsDisponibles};
 use crate::models::mission::avancer_statut_mission;
 use crate::services::tarification;
+use crate::utils::generer_numero_document;
 use tauri::State;
 
 /// Liste les factures, avec filtres optionnels par saison et par statut.
@@ -76,7 +77,7 @@ pub fn get_operations_disponibles(
     let bordereaux = {
         let mut stmt = db
             .prepare(
-                "SELECT b.id, b.numero, b.saison_id, b.mission_id, b.camion_id, b.chauffeur_id,
+                "SELECT b.id, b.numero, b.saison_id, b.mission_id, b.bsm_id, b.camion_id, b.chauffeur_id,
                         b.usine_id, b.cgi_id, b.date_bordereau, b.poids_vide_kg, b.poids_charge_kg,
                         b.poids_net_kg, b.distance_km, b.type_fret, b.tarif_applique,
                         b.unite_tarif, b.montant_brut, b.statut, b.observations,
@@ -98,23 +99,24 @@ pub fn get_operations_disponibles(
                     numero: row.get(1)?,
                     saison_id: row.get(2)?,
                     mission_id: row.get(3)?,
-                    camion_id: row.get(4)?,
-                    chauffeur_id: row.get(5)?,
-                    usine_id: row.get(6)?,
-                    cgi_id: row.get(7)?,
-                    date_bordereau: row.get(8)?,
-                    poids_vide_kg: row.get(9)?,
-                    poids_charge_kg: row.get(10)?,
-                    poids_net_kg: row.get(11)?,
-                    distance_km: row.get(12)?,
-                    type_fret: row.get(13)?,
-                    tarif_applique: row.get(14)?,
-                    unite_tarif: row.get(15)?,
-                    montant_brut: row.get(16)?,
-                    statut: row.get(17)?,
-                    observations: row.get(18)?,
-                    created_at: row.get(19)?,
-                    updated_at: row.get(20)?,
+                    bsm_id: row.get(4)?,
+                    camion_id: row.get(5)?,
+                    chauffeur_id: row.get(6)?,
+                    usine_id: row.get(7)?,
+                    cgi_id: row.get(8)?,
+                    date_bordereau: row.get(9)?,
+                    poids_vide_kg: row.get(10)?,
+                    poids_charge_kg: row.get(11)?,
+                    poids_net_kg: row.get(12)?,
+                    distance_km: row.get(13)?,
+                    type_fret: row.get(14)?,
+                    tarif_applique: row.get(15)?,
+                    unite_tarif: row.get(16)?,
+                    montant_brut: row.get(17)?,
+                    statut: row.get(18)?,
+                    observations: row.get(19)?,
+                    created_at: row.get(20)?,
+                    updated_at: row.get(21)?,
                 })
             })
             .map_err(|e| e.to_string())?
@@ -177,21 +179,38 @@ pub fn get_operations_disponibles(
 /// - net    = brut − gasoil.
 /// La TKM (trajets > 90 km), le détail des trajets et la mention
 /// « ORIGINAL PAYABLE » sont générés à la création (CDC v1.1 §11).
+/// Si `payload.numero` est absent ou vide, un numéro séquentiel est généré
+/// automatiquement pour l'année de la facture.
 #[tauri::command]
 pub fn creer_facture(
     state: State<AppState>,
     payload: CreerFacturePayload,
 ) -> Result<Facture, String> {
-    if payload.numero.trim().is_empty() {
-        return Err("Le numéro de facture est obligatoire.".into());
-    }
     if payload.bordereau_ids.is_empty() && payload.bsm_ids.is_empty() {
         return Err("Sélectionnez au moins un bordereau ou un BSM.".into());
     }
 
     let mut db = state.db.lock().map_err(|e| e.to_string())?;
-    verifier_numero_disponible(&db, &payload.numero, None)?;
     verifier_client(&db, payload.client_id)?;
+
+    let numero = payload
+        .numero
+        .as_ref()
+        .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty());
+    let numero = match numero {
+        Some(n) => {
+            verifier_numero_disponible(&db, &n, None)?;
+            n
+        }
+        None => generer_numero_document(
+            &db,
+            "factures",
+            "date_facture",
+            "numero",
+            payload.date_facture.as_str(),
+        )?,
+    };
 
     let tx = db.transaction().map_err(|e| e.to_string())?;
 
@@ -200,7 +219,7 @@ pub fn creer_facture(
                                mention_original_payable)
          VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
         rusqlite::params![
-            payload.numero,
+            numero,
             payload.saison_id,
             payload.client_id,
             payload.date_facture,

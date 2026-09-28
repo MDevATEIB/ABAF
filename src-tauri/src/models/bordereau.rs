@@ -6,6 +6,7 @@ pub struct Bordereau {
     pub numero: String,
     pub saison_id: i64,
     pub mission_id: Option<i64>,
+    pub bsm_id: Option<i64>,
     pub camion_id: i64,
     pub chauffeur_id: Option<i64>,
     pub usine_id: Option<i64>,
@@ -32,16 +33,20 @@ pub struct LigneBordereau {
     pub av_id: Option<i64>,
     pub localite: Option<String>,
     pub poids_kg: f64,
+    pub distance_km: Option<f64>,
     pub code: Option<String>,
     pub observations: Option<String>,
 }
 
-/// Une ligne du chargement : un AV et le poids de son lot.
-#[derive(Debug, Deserialize)]
+/// Une ligne du chargement : un AV, le poids de son lot, et la distance
+/// parcourue pour cette livraison (utilisée ligne par ligne pour le TKM
+/// et la facturation).
+#[derive(Debug, Deserialize, Clone)]
 pub struct LigneBordereauPayload {
     pub av_id: Option<i64>,
     pub localite: Option<String>,
     pub poids_kg: f64,
+    pub distance_km: Option<f64>,
     pub code: Option<String>,
     pub observations: Option<String>,
 }
@@ -50,7 +55,10 @@ pub struct LigneBordereauPayload {
 /// des pesées de la mission : ils ne font pas partie du formulaire.
 #[derive(Debug, Deserialize)]
 pub struct CreerBordereauPayload {
-    pub numero: String,
+    /// Numéro du bordereau. Optionnel : si `None` ou chaîne vide, le backend
+    /// attribue une valeur séquentielle par année (format `2026-0138`).
+    #[serde(default)]
+    pub numero: Option<String>,
     pub saison_id: i64,
     pub mission_id: Option<i64>,
     pub camion_id: i64,
@@ -64,6 +72,18 @@ pub struct CreerBordereauPayload {
     pub type_fret: Option<String>,
     pub observations: Option<String>,
     pub lignes: Vec<LigneBordereauPayload>,
+    /// — Section Gasoil (BSM) optionnelle —
+    /// Si `quantite_litres_gasoil` > 0, un BSM est auto-généré à la validation.
+    #[serde(default)]
+    pub quantite_litres_gasoil: Option<f64>,
+    #[serde(default)]
+    pub prix_litre_gasoil: Option<f64>,
+    #[serde(default)]
+    pub beneficiaire_gasoil: Option<String>,
+    #[serde(default)]
+    pub imputation_gasoil: Option<String>,
+    #[serde(default)]
+    pub reference_gasoil: Option<String>,
 }
 
 /// Payload de modification (brouillon uniquement) : le formulaire fournit
@@ -81,4 +101,15 @@ pub struct ModifierBordereauPayload {
     pub type_fret: Option<String>,
     pub observations: Option<String>,
     pub lignes: Vec<LigneBordereauPayload>,
+    /// — Section Gasoil (BSM) optionnelle —
+    #[serde(default)]
+    pub quantite_litres_gasoil: Option<f64>,
+    #[serde(default)]
+    pub prix_litre_gasoil: Option<f64>,
+    #[serde(default)]
+    pub beneficiaire_gasoil: Option<String>,
+    #[serde(default)]
+    pub imputation_gasoil: Option<String>,
+    #[serde(default)]
+    pub reference_gasoil: Option<String>,
 }

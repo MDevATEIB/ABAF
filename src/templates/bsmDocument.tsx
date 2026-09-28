@@ -1,5 +1,5 @@
 import type { BSM, Parametres } from '@/types';
-import { formatDate, formatFCFA, formatLitres } from '@/utils';
+import { formatDate, formatFCFA, formatLitres, formatNumeroBsm } from '@/utils';
 import { EnteteAbaf } from './enteteAbaf';
 
 // ─── Champ libellé / valeur ───────────────────────────────────────────────────
@@ -37,12 +37,13 @@ export function BsmDocument({
 }: BsmDocumentProps) {
   return (
     <div className="feuille-document flex flex-col text-xs leading-snug">
-      {/* ── En-tête ABAF ── */}
-      <div className="flex items-start justify-between gap-6 border-b-2 border-black pb-3">
-        <EnteteAbaf entreprise={entreprise} />
+      <EnteteAbaf entreprise={entreprise} />
+
+      <div className="mt-3 flex items-start justify-between gap-6">
+        <div />
         <div className="text-right">
           <p className="text-sm font-bold uppercase">Bon de sortie magasin</p>
-          <p className="mt-1 font-semibold">N° {bsm.numero}</p>
+          <p className="mt-1 font-semibold">{formatNumeroBsm(bsm, usineNom)}</p>
           <p className="text-[11px] text-neutral-600">Date : {formatDate(bsm.date_bsm)}</p>
         </div>
       </div>

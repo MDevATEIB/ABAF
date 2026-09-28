@@ -5,12 +5,12 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 
 import {
-  Button, Input, Select, Modal,
+  Button, Input, Select, Modal, Pagination,
   PageHeader, EmptyState, Spinner, ErrorMessage,
 } from '@/components/ui';
 import {
   useAvances, useCreerAvance, useEnregistrerUtilisationAvance, useUtilisationsAvance,
-  useFactures, useSaisons,
+  useFactures, useSaisons, usePagination,
 } from '@/hooks';
 import type { Avance, Facture, Saison } from '@/types';
 import { calculSoldeAvance, formatDate, formatFCFA } from '@/utils';
@@ -280,6 +280,8 @@ export default function AvancesPage() {
 
   const saisonOuverte = saisons.find((s) => s.statut === 'ouverte');
 
+  const pagination = usePagination(avances);
+
   const totaux = useMemo(
     () =>
       avances.reduce(
@@ -351,7 +353,7 @@ export default function AvancesPage() {
             ...saisons.map((s) => ({ value: s.id, label: s.libelle })),
           ]}
           value={filtreSaisonId ?? 0}
-          onChange={(e) => setFiltreSaisonId(Number(e.target.value) || undefined)}
+          onChange={(e) => { setFiltreSaisonId(Number(e.target.value) || undefined); pagination.reset(); }}
           className="w-56"
         />
       </div>
@@ -406,7 +408,7 @@ export default function AvancesPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {avances.map((a) => {
+                {pagination.items.map((a) => {
                   const solde = calculSoldeAvance(a.montant_initial, a.montant_utilise);
                   return (
                     <tr key={a.id} className="hover:bg-muted/30 transition-colors">
@@ -455,6 +457,16 @@ export default function AvancesPage() {
               </tbody>
             </table>
           </div>
+
+          <Pagination
+            page={pagination.page}
+            totalPages={pagination.totalPages}
+            totalItems={pagination.totalItems}
+            pageSize={pagination.pageSize}
+            onPageChange={pagination.goToPage}
+            onPageSizeChange={pagination.setPageSize}
+            className="mt-2"
+          />
         </>
       )}
 

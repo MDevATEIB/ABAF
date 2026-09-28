@@ -30,7 +30,10 @@ pub struct BSM {
 
 #[derive(Debug, Deserialize)]
 pub struct CreerBsmPayload {
-    pub numero: String,
+    /// Numéro du BSM. Optionnel : si `None` ou vide, le backend attribue une
+    /// valeur séquentielle par année (format `2026-0005`).
+    #[serde(default)]
+    pub numero: Option<String>,
     pub saison_id: i64,
     pub mission_id: Option<i64>,
     pub camion_id: i64,

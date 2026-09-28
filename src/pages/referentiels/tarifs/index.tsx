@@ -6,11 +6,12 @@ import { z } from 'zod';
 
 import {
   Button, Input, Select, Modal, ConfirmDialog,
-  PageHeader, EmptyState, Spinner, ErrorMessage,
+  PageHeader, EmptyState, Spinner, ErrorMessage, Pagination,
 } from '@/components/ui';
 import {
   useSaisons,
   useTarifs, useCreerTarif, useModifierTarif, useSupprimerTarif,
+  usePagination,
 } from '@/hooks';
 import type { Tarif } from '@/types';
 import {
@@ -118,14 +119,16 @@ export default function TarifsPage() {
   const estOuverte   = saisonActive?.statut === 'ouverte';
 
   const { data: tarifs = [], isLoading: loadingTarifs, error } = useTarifs(saisonId);
-  const creer    = useCreerTarif();
-  const modifier = useModifierTarif(saisonId);
+  const creer     = useCreerTarif();
+  const modifier  = useModifierTarif(saisonId);
   const supprimer = useSupprimerTarif(saisonId);
 
   const [showCreate, setShowCreate]       = useState(false);
   const [editing, setEditing]             = useState<Tarif | null>(null);
   const [deleting, setDeleting]           = useState<Tarif | null>(null);
   const [mutationError, setMutationError] = useState<string | null>(null);
+
+  const pagination = usePagination(tarifs);
 
   async function handleCreate(values: FormValues) {
     if (!saisonId) return;
@@ -198,7 +201,7 @@ export default function TarifsPage() {
             options={saisonOptions}
             placeholder="Sélectionner une campagne"
             value={saisonId ?? ''}
-            onChange={(e) => setSaisonId(e.target.value ? Number(e.target.value) : undefined)}
+            onChange={(e) => { setSaisonId(e.target.value ? Number(e.target.value) : undefined); pagination.reset(); }}
           />
         )}
       </div>
@@ -228,52 +231,62 @@ export default function TarifsPage() {
           }
         />
       ) : (
-        <div className="overflow-x-auto rounded-lg border border-border">
-          <table className="w-full text-sm">
-            <thead className="bg-muted/50">
-              <tr>
-                <th className="px-4 py-3 text-left font-medium text-muted-foreground">Type de fret</th>
-                <th className="px-4 py-3 text-left font-medium text-muted-foreground">Tranche de distance</th>
-                <th className="px-4 py-3 text-left font-medium text-muted-foreground">Unité</th>
-                <th className="px-4 py-3 text-left font-medium text-muted-foreground">Tarif</th>
-                {estOuverte && <th className="px-4 py-3 text-right font-medium text-muted-foreground">Actions</th>}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {tarifs.map((t) => (
-                <tr key={t.id} className="hover:bg-muted/30 transition-colors">
-                  <td className="px-4 py-3">{labelTypeFret(t.type_fret)}</td>
-                  <td className="px-4 py-3">{trancheDistance(t.distance_min, t.distance_max)}</td>
-                  <td className="px-4 py-3">{labelUniteTarif(t.unite_tarif)}</td>
-                  <td className="px-4 py-3 font-medium">
-                    {t.tarif.toLocaleString('fr-FR', { minimumFractionDigits: 2 })}
-                  </td>
-                  {estOuverte && (
-                    <td className="px-4 py-3">
-                      <div className="flex justify-end gap-1">
-                        <Button
-                          variant="ghost" size="sm" icon={<Pencil size={13} />}
-                          onClick={() => { setMutationError(null); setEditing(t); }}
-                          title="Modifier"
-                        >
-                          Modifier
-                        </Button>
-                        <Button
-                          variant="ghost" size="sm" icon={<Trash2 size={13} />}
-                          onClick={() => setDeleting(t)}
-                          title="Supprimer"
-                          className="text-destructive hover:text-destructive"
-                        >
-                          Supprimer
-                        </Button>
-                      </div>
-                    </td>
-                  )}
+        <>
+          <div className="overflow-x-auto rounded-lg border border-border">
+            <table className="w-full text-sm">
+              <thead className="bg-muted/50">
+                <tr>
+                  <th className="px-4 py-3 text-left font-medium text-muted-foreground">Type de fret</th>
+                  <th className="px-4 py-3 text-left font-medium text-muted-foreground">Tranche de distance</th>
+                  <th className="px-4 py-3 text-left font-medium text-muted-foreground">Unité</th>
+                  <th className="px-4 py-3 text-left font-medium text-muted-foreground">Tarif</th>
+                  {estOuverte && <th className="px-4 py-3 text-right font-medium text-muted-foreground">Actions</th>}
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {pagination.items.map((t) => (
+                  <tr key={t.id} className="hover:bg-muted/30 transition-colors">
+                    <td className="px-4 py-3">{labelTypeFret(t.type_fret)}</td>
+                    <td className="px-4 py-3">{trancheDistance(t.distance_min, t.distance_max)}</td>
+                    <td className="px-4 py-3">{labelUniteTarif(t.unite_tarif)}</td>
+                    <td className="px-4 py-3 font-medium">
+                      {t.tarif.toLocaleString('fr-FR', { minimumFractionDigits: 2 })}
+                    </td>
+                    {estOuverte && (
+                      <td className="px-4 py-3">
+                        <div className="flex justify-end gap-1">
+                          <Button
+                            variant="ghost" size="sm" icon={<Pencil size={13} />}
+                            onClick={() => { setMutationError(null); setEditing(t); }}
+                            title="Modifier"
+                          >
+                            Modifier
+                          </Button>
+                          <Button
+                            variant="ghost" size="sm" icon={<Trash2 size={13} />}
+                            onClick={() => setDeleting(t)}
+                            title="Supprimer"
+                            className="text-destructive hover:text-destructive"
+                          >
+                            Supprimer
+                          </Button>
+                        </div>
+                      </td>
+                    )}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <Pagination
+            page={pagination.page}
+            totalPages={pagination.totalPages}
+            totalItems={pagination.totalItems}
+            pageSize={pagination.pageSize}
+            onPageChange={pagination.goToPage}
+            onPageSizeChange={pagination.setPageSize}
+          />
+        </>
       )}
 
       {/* Modals */}

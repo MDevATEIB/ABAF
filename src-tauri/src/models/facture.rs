@@ -48,7 +48,10 @@ pub struct OperationsDisponibles {
 /// sélectionnées, les montants sont calculés côté base (AGENT.md §13).
 #[derive(Debug, Deserialize)]
 pub struct CreerFacturePayload {
-    pub numero: String,
+    /// Numéro de facture. Optionnel : si `None` ou chaîne vide, le backend
+    /// attribue une valeur séquentielle par année (format `2026-0138`).
+    #[serde(default)]
+    pub numero: Option<String>,
     pub saison_id: i64,
     pub client_id: i64,
     pub date_facture: String,

@@ -4,3 +4,4 @@
 export { BsmDocument } from './bsmDocument';
 export { BordereauDocument } from './bordereauDocument';
 export { FactureDocument } from './factureDocument';
+export { ReleveDocument } from './releveDocument';

@@ -5,11 +5,12 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 
 import {
-  Button, Input, Select, Modal, PageHeader, EmptyState, Spinner, ErrorMessage,
+  Button, Input, Select, Modal, PageHeader, EmptyState, Spinner, ErrorMessage, Pagination,
 } from '@/components/ui';
 import { useUsines } from '@/hooks/useUsines';
 import { useCgis } from '@/hooks/useCgis';
 import { useAvs, useCreerAv, useModifierAv } from '@/hooks/useAvs';
+import { usePagination } from '@/hooks/usePagination';
 import type { AV } from '@/types';
 
 // ─── Schéma ──────────────────────────────────────────────────────────────────
@@ -91,13 +92,16 @@ export default function AvsPage() {
   const [editing, setEditing]             = useState<AV | null>(null);
   const [mutationError, setMutationError] = useState<string | null>(null);
 
+  const pagination = usePagination(avs);
+
   const usineOptions = usines.map((u) => ({ value: u.id, label: u.nom }));
   const cgiOptions   = cgis.map((c) => ({ value: c.id, label: c.nom }));
   const cgiMap       = Object.fromEntries(cgis.map((c) => [c.id, c.nom]));
 
   function handleFiltreUsine(id: number | undefined) {
     setFiltreUsineId(id);
-    setFiltreCgiId(undefined); // reset filtre CGI quand on change d'usine
+    setFiltreCgiId(undefined);
+    pagination.reset();
   }
 
   async function handleCreate(values: FormValues) {
@@ -158,7 +162,7 @@ export default function AvsPage() {
           ]}
           value={filtreCgiId ?? 0}
           disabled={!filtreUsineId || loadingCgis}
-          onChange={(e) => setFiltreCgiId(Number(e.target.value) || undefined)}
+          onChange={(e) => { setFiltreCgiId(Number(e.target.value) || undefined); pagination.reset(); }}
         />
       </div>
 
@@ -178,39 +182,49 @@ export default function AvsPage() {
           }
         />
       ) : (
-        <div className="overflow-x-auto rounded-lg border border-border">
-          <table className="w-full text-sm">
-            <thead className="bg-muted/50">
-              <tr>
-                <th className="px-4 py-3 text-left font-medium text-muted-foreground">Nom</th>
-                <th className="px-4 py-3 text-left font-medium text-muted-foreground">CGI</th>
-                <th className="px-4 py-3 text-left font-medium text-muted-foreground">Localité</th>
-                <th className="px-4 py-3 text-right font-medium text-muted-foreground">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {avs.map((a) => (
-                <tr key={a.id} className="hover:bg-muted/30 transition-colors">
-                  <td className="px-4 py-3 font-medium text-foreground">{a.nom}</td>
-                  <td className="px-4 py-3 text-muted-foreground">
-                    {a.cgi_id ? (cgiMap[a.cgi_id] ?? `CGI #${a.cgi_id}`) : '—'}
-                  </td>
-                  <td className="px-4 py-3 text-muted-foreground">{a.localite || '—'}</td>
-                  <td className="px-4 py-3">
-                    <div className="flex justify-end">
-                      <Button
-                        variant="ghost" size="sm" icon={<Pencil size={13} />}
-                        onClick={() => { setMutationError(null); setEditing(a); }}
-                      >
-                        Modifier
-                      </Button>
-                    </div>
-                  </td>
+        <>
+          <div className="overflow-x-auto rounded-lg border border-border">
+            <table className="w-full text-sm">
+              <thead className="bg-muted/50">
+                <tr>
+                  <th className="px-4 py-3 text-left font-medium text-muted-foreground">Nom</th>
+                  <th className="px-4 py-3 text-left font-medium text-muted-foreground">CGI</th>
+                  <th className="px-4 py-3 text-left font-medium text-muted-foreground">Localité</th>
+                  <th className="px-4 py-3 text-right font-medium text-muted-foreground">Actions</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {pagination.items.map((a) => (
+                  <tr key={a.id} className="hover:bg-muted/30 transition-colors">
+                    <td className="px-4 py-3 font-medium text-foreground">{a.nom}</td>
+                    <td className="px-4 py-3 text-muted-foreground">
+                      {a.cgi_id ? (cgiMap[a.cgi_id] ?? `CGI #${a.cgi_id}`) : '—'}
+                    </td>
+                    <td className="px-4 py-3 text-muted-foreground">{a.localite || '—'}</td>
+                    <td className="px-4 py-3">
+                      <div className="flex justify-end">
+                        <Button
+                          variant="ghost" size="sm" icon={<Pencil size={13} />}
+                          onClick={() => { setMutationError(null); setEditing(a); }}
+                        >
+                          Modifier
+                        </Button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <Pagination
+            page={pagination.page}
+            totalPages={pagination.totalPages}
+            totalItems={pagination.totalItems}
+            pageSize={pagination.pageSize}
+            onPageChange={pagination.goToPage}
+            onPageSizeChange={pagination.setPageSize}
+          />
+        </>
       )}
 
       <Modal open={showCreate} onClose={() => { setShowCreate(false); setMutationError(null); }} title="Nouvel AV">

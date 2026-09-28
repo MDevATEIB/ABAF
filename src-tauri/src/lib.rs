@@ -118,6 +118,8 @@ pub fn run() {
             commands::sauvegarde::sauvegarder_base,
             commands::sauvegarde::choisir_fichier_sauvegarde,
             commands::sauvegarde::restaurer_base,
+            // Utils / numérotation auto
+            utils::prochain_numero_document,
         ])
         .run(tauri::generate_context!())
         .expect("Erreur lors du démarrage de l'application ABAF");

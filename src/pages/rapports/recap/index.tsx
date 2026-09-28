@@ -1,10 +1,12 @@
 import { useState } from 'react';
-import { FileBarChart } from 'lucide-react';
+import { FileBarChart, Printer } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
-import { Select, PageHeader, EmptyState, Spinner, ErrorMessage } from '@/components/ui';
-import { useRecapitulatif, useSaisons } from '@/hooks';
+import { Select, PageHeader, EmptyState, Spinner, ErrorMessage, Pagination, Button } from '@/components/ui';
+import { useRecapitulatif, useSaisons, usePagination } from '@/hooks';
 import type { LigneRapport } from '@/types';
 import { formatDate, formatDistance, formatFCFA, formatKg, formatLitres } from '@/utils';
+
 
 // ─── Carte de total ───────────────────────────────────────────────────────────
 function Carte({ label, valeur }: { label: string; valeur: string }) {
@@ -76,12 +78,20 @@ function TableauOperations({ lignes }: { lignes: LigneRapport[] }) {
 
 // ─── Page principale ──────────────────────────────────────────────────────────
 export default function RecapitulatifPage() {
+  const navigate = useNavigate();
   const [filtreSaisonId, setFiltreSaisonId] = useState<number | undefined>(undefined);
 
   const { data: saisons = [] } = useSaisons();
   const { data, isLoading, error } = useRecapitulatif(filtreSaisonId);
 
+  const lignes = data?.lignes ?? [];
+  const pagination = usePagination(lignes);
+
   const messageErreur = error ? (error instanceof Error ? error.message : String(error)) : null;
+
+  const routeImpression = filtreSaisonId
+    ? `/impression/releve/${filtreSaisonId}`
+    : '/impression/releve';
 
   return (
     <div>
@@ -91,20 +101,31 @@ export default function RecapitulatifPage() {
       />
 
       {/* ── Filtres ─────────────────────────────────────────────────────────── */}
-      <div className="mb-4 flex flex-wrap items-end gap-3">
-        <Select
-          label="Campagne"
-          options={[
-            { value: 0, label: 'Campagne ouverte' },
-            ...saisons.map((s) => ({
-              value: s.id,
-              label: `${s.libelle} (${s.statut === 'ouverte' ? 'ouverte' : 'clôturée'})`,
-            })),
-          ]}
-          value={filtreSaisonId ?? 0}
-          onChange={(e) => setFiltreSaisonId(Number(e.target.value) || undefined)}
-          className="w-64"
-        />
+      <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
+        <div className="flex flex-wrap items-end gap-3">
+          <Select
+            label="Campagne"
+            options={[
+              { value: 0, label: 'Campagne ouverte' },
+              ...saisons.map((s) => ({
+                value: s.id,
+                label: `${s.libelle} (${s.statut === 'ouverte' ? 'ouverte' : 'clôturée'})`,
+              })),
+            ]}
+            value={filtreSaisonId ?? 0}
+            onChange={(e) => { setFiltreSaisonId(Number(e.target.value) || undefined); pagination.reset(); }}
+            className="w-64"
+          />
+        </div>
+        {data && lignes.length > 0 && (
+          <Button
+            variant="outline"
+            icon={<Printer size={14} />}
+            onClick={() => navigate(routeImpression)}
+          >
+            Imprimer le relevé
+          </Button>
+        )}
       </div>
 
       {isLoading ? (
@@ -112,7 +133,7 @@ export default function RecapitulatifPage() {
       ) : messageErreur ? (
         <ErrorMessage message={messageErreur} className="mt-4" />
       ) : data ? (
-        data.lignes.length === 0 ? (
+        lignes.length === 0 ? (
           <EmptyState
             icon={<FileBarChart size={40} />}
             title="Aucune opération pour cette campagne"
@@ -158,7 +179,16 @@ export default function RecapitulatifPage() {
             <h3 className="mb-2 text-sm font-medium text-muted-foreground">
               Tableau des opérations — {data.saison_libelle}
             </h3>
-            <TableauOperations lignes={data.lignes} />
+            <TableauOperations lignes={pagination.items} />
+            <Pagination
+              page={pagination.page}
+              totalPages={pagination.totalPages}
+              totalItems={pagination.totalItems}
+              pageSize={pagination.pageSize}
+              onPageChange={pagination.goToPage}
+              onPageSizeChange={pagination.setPageSize}
+              className="mt-2"
+            />
           </>
         )
       ) : null}

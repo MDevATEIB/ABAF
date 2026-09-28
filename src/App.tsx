@@ -6,19 +6,12 @@ import AppLayout from '@/components/layout/AppLayout';
 import SaisonsPage    from '@/pages/referentiels/saisons';
 import TarifsPage     from '@/pages/referentiels/tarifs';
 import PrixGasoilPage from '@/pages/referentiels/prix-gasoil';
-import CamionsPage    from '@/pages/referentiels/camions';
-import ChauffeursPage from '@/pages/referentiels/chauffeurs';
-import UsinesPage     from '@/pages/referentiels/usines';
-import CgisPage       from '@/pages/referentiels/cgis';
-import AvsPage        from '@/pages/referentiels/avs';
 
 // ── Dashboard ─────────────────────────────────────────────────────────────────
 import DashboardPage from '@/pages/dashboard';
 
 // ── Pages opérations ──────────────────────────────────────────────────────────
-import MissionsPage from '@/pages/operations/missions';
 import PeseesPage from '@/pages/operations/pesees';
-import BsmPage from '@/pages/operations/bsm';
 import BordereauxPage from '@/pages/operations/bordereaux';
 import LivraisonsPage from '@/pages/operations/livraisons';
 
@@ -37,6 +30,7 @@ import ExportPdfPage from '@/pages/rapports/export-pdf';
 import ImpressionBsmPage from '@/pages/impression/bsm';
 import ImpressionBordereauPage from '@/pages/impression/bordereau';
 import ImpressionFacturePage from '@/pages/impression/facture';
+import ImpressionRelevePage from '@/pages/impression/releve';
 
 // ── Paramètres ────────────────────────────────────────────────────────────────
 import ParametresPage from '@/pages/parametres';
@@ -58,17 +52,17 @@ function App() {
           <Route path="/referentiels/tarifs"      element={<TarifsPage />} />
           <Route path="/referentiels/prix-gasoil" element={<PrixGasoilPage />} />
           <Route path="/referentiels/clients"     element={<ComingSoon title="Clients" />} />
-          <Route path="/referentiels/camions"     element={<CamionsPage />} />
-          <Route path="/referentiels/chauffeurs"  element={<ChauffeursPage />} />
-          <Route path="/referentiels/usines"      element={<UsinesPage />} />
-          <Route path="/referentiels/cgis"        element={<CgisPage />} />
-          <Route path="/referentiels/avs"         element={<AvsPage />} />
+          <Route path="/referentiels/camions"     element={<Navigate to="/operations/bordereaux" replace />} />
+          <Route path="/referentiels/chauffeurs"  element={<Navigate to="/operations/bordereaux" replace />} />
+          <Route path="/referentiels/usines"      element={<Navigate to="/operations/bordereaux" replace />} />
+          <Route path="/referentiels/cgis"        element={<Navigate to="/operations/bordereaux" replace />} />
+          <Route path="/referentiels/avs"         element={<Navigate to="/operations/bordereaux" replace />} />
 
           {/* ── Opérations ───────────────────────────────────────────────── */}
-          <Route path="/operations" element={<Navigate to="/operations/missions" replace />} />
-          <Route path="/operations/missions"   element={<MissionsPage />} />
+          <Route path="/operations" element={<Navigate to="/operations/bordereaux" replace />} />
+          <Route path="/operations/missions"   element={<Navigate to="/operations/bordereaux" replace />} />
           <Route path="/operations/pesees"     element={<PeseesPage />} />
-          <Route path="/operations/bsm"        element={<BsmPage />} />
+          <Route path="/operations/bsm"        element={<Navigate to="/operations/bordereaux" replace />} />
           <Route path="/operations/bordereaux" element={<BordereauxPage />} />
           <Route path="/operations/livraisons" element={<LivraisonsPage />} />
 
@@ -89,6 +83,8 @@ function App() {
           <Route path="/impression/bsm/:id"       element={<ImpressionBsmPage />} />
           <Route path="/impression/bordereau/:id" element={<ImpressionBordereauPage />} />
           <Route path="/impression/facture/:id"   element={<ImpressionFacturePage />} />
+          <Route path="/impression/releve"        element={<ImpressionRelevePage />} />
+          <Route path="/impression/releve/:saisonId" element={<ImpressionRelevePage />} />
 
           {/* ── Paramètres ───────────────────────────────────────────────── */}
           <Route path="/parametres" element={<ParametresPage />} />

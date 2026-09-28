@@ -6,11 +6,12 @@ import { z } from 'zod';
 
 import {
   Button, Input, Select, Badge, Modal,
-  PageHeader, EmptyState, Spinner, ErrorMessage,
+  PageHeader, EmptyState, Spinner, ErrorMessage, Pagination,
 } from '@/components/ui';
 import {
   usePaiements, useCreerPaiement, useModifierPaiement,
   useFactures, useSaisons, useClients,
+  usePagination,
 } from '@/hooks';
 import type { Facture, Paiement, StatutPaiement } from '@/types';
 import { formatDate, formatFCFA } from '@/utils';
@@ -212,6 +213,8 @@ export default function PaiementsPage() {
     });
   }, [paiements, factureMap, filtreSaisonId, filtreStatut]);
 
+  const pagination = usePagination(paiementsFiltres);
+
   // ── Création ──────────────────────────────────────────────────────────────
   async function handleCreate(values: FormValues) {
     setMutationError(null);
@@ -277,14 +280,14 @@ export default function PaiementsPage() {
             ...saisons.map((s) => ({ value: s.id, label: s.libelle })),
           ]}
           value={filtreSaisonId ?? 0}
-          onChange={(e) => setFiltreSaisonId(Number(e.target.value) || undefined)}
+          onChange={(e) => { setFiltreSaisonId(Number(e.target.value) || undefined); pagination.reset(); }}
           className="w-56"
         />
         <Select
           label="Statut"
           options={[{ value: '', label: 'Tous les statuts' }, ...STATUTS_PAIEMENT]}
           value={filtreStatut ?? ''}
-          onChange={(e) => setFiltreStatut((e.target.value || undefined) as StatutPaiement | undefined)}
+          onChange={(e) => { setFiltreStatut((e.target.value || undefined) as StatutPaiement | undefined); pagination.reset(); }}
           className="w-56"
         />
       </div>
@@ -318,7 +321,7 @@ export default function PaiementsPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
-              {paiementsFiltres.map((p) => {
+              {pagination.items.map((p) => {
                 const facture = factureMap.get(p.facture_id);
                 return (
                   <tr key={p.id} className="hover:bg-muted/30 transition-colors">
@@ -363,6 +366,16 @@ export default function PaiementsPage() {
           </table>
         </div>
       )}
+
+      <Pagination
+        page={pagination.page}
+        totalPages={pagination.totalPages}
+        totalItems={pagination.totalItems}
+        pageSize={pagination.pageSize}
+        onPageChange={pagination.goToPage}
+        onPageSizeChange={pagination.setPageSize}
+        className="mt-2"
+      />
 
       {/* ── Modal création ─────────────────────────────────────────────────── */}
       <Modal

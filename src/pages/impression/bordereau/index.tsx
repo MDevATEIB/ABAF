@@ -10,6 +10,7 @@ import {
   useCgis,
   useLignesBordereau,
   useMissions,
+  useParametres,
   useSaisons,
   useUsines,
 } from '@/hooks';
@@ -34,6 +35,7 @@ export default function ImpressionBordereauPage() {
   const avs = useAvs();
   const saisons = useSaisons();
   const missions = useMissions();
+  const parametres = useParametres();
 
   const bordereau = bordereaux.data?.find((b) => b.id === bordereauId);
   const lignes = useLignesBordereau(bordereau?.id);
@@ -47,6 +49,7 @@ export default function ImpressionBordereauPage() {
     avs.isLoading ||
     saisons.isLoading ||
     missions.isLoading ||
+    parametres.isLoading ||
     lignes.isLoading;
   const erreur =
     bordereaux.error ??
@@ -57,6 +60,7 @@ export default function ImpressionBordereauPage() {
     avs.error ??
     saisons.error ??
     missions.error ??
+    parametres.error ??
     lignes.error;
 
   const camionNom = bordereau
@@ -131,6 +135,7 @@ export default function ImpressionBordereauPage() {
         cgiNom={cgiNom}
         missionRef={dateMission ? formatDate(dateMission) : undefined}
         saisonLibelle={saisonLibelle}
+        entreprise={parametres.data}
         avNom={avNom}
       />
     </div>

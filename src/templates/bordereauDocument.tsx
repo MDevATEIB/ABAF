@@ -1,5 +1,6 @@
-import type { Bordereau, LigneBordereau } from '@/types';
-import { formatDate, formatDistance, formatKg } from '@/utils';
+import type { Bordereau, LigneBordereau, Parametres } from '@/types';
+import { formatDate, formatDistance, formatKg, formatNumeroBordereau } from '@/utils';
+import { EnteteAbaf } from './enteteAbaf';
 
 // ─── Champ libellé / valeur ───────────────────────────────────────────────────
 function Champ({ label, valeur }: { label: string; valeur?: string }) {
@@ -31,13 +32,14 @@ interface BordereauDocumentProps {
   cgiNom?: string;
   missionRef?: string;
   saisonLibelle?: string;
+  entreprise?: Parametres;
   /** Correspondance id d'AV → nom, pour libeller les lots. */
   avNom: Map<number, string>;
 }
 
 /**
  * Document imprimable d'un bordereau de transport et de livraison
- * (AGENT.md §20.2) : en-tête COTONTCHAD SN, numéro, usine, date, camion,
+ * (AGENT.md §20.2) : en-tête ABAF officiel, numéro, usine, date, camion,
  * chauffeur, CGI, AV, poids, code, observations, total poids, informations de
  * chargement, mention automatique « ORIGINAL PAYABLE » (CDC v1.1 §11.2) et
  * signatures.
@@ -51,30 +53,22 @@ export function BordereauDocument({
   cgiNom,
   missionRef,
   saisonLibelle,
+  entreprise,
   avNom,
 }: BordereauDocumentProps) {
   const totalPoids = lignes.reduce((total, ligne) => total + ligne.poids_kg, 0);
+  const totalKm = lignes.reduce((total, ligne) => total + (ligne.distance_km ?? 0), 0);
 
   return (
     <div className="feuille-document flex flex-col text-xs leading-snug">
-      {/* ── En-tête COTONTCHAD SN ── */}
-      <div className="flex items-start justify-between gap-6 border-b-2 border-black pb-3">
-        <div className="flex items-center gap-3">
-          <div className="shrink-0 border-2 border-black px-3 py-2 text-center text-[10px] font-bold uppercase leading-tight">
-            Cotontchad
-            <br />
-            SN
-          </div>
-          <div>
-            <p className="text-base font-bold uppercase tracking-wide">Cotontchad SN</p>
-            <p className="text-[10px] text-neutral-600">Société Cotonnière du Tchad</p>
-          </div>
-        </div>
+      <EnteteAbaf entreprise={entreprise} />
+
+      <div className="mt-3 flex items-start justify-between gap-6">
+        <div />
         <div className="text-right">
           <p className="text-sm font-bold uppercase">Bordereau de transport et de livraison</p>
-          <p className="mt-1 font-semibold">N° {bordereau.numero}</p>
+          <p className="mt-1 font-semibold">{formatNumeroBordereau(bordereau, usineNom)}</p>
           <p className="text-[11px] text-neutral-600">Date : {formatDate(bordereau.date_bordereau)}</p>
-          {/* CDC v1.1 §11.2 : mention ajoutée automatiquement sur les bordereaux imprimés. */}
           <p className="mt-1.5 inline-block border-2 border-black px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide">
             Original payable
           </p>
@@ -98,6 +92,7 @@ export function BordereauDocument({
             <th className="border border-neutral-400 px-2 py-1.5 text-left font-semibold">AV</th>
             <th className="border border-neutral-400 px-2 py-1.5 text-left font-semibold">Localité</th>
             <th className="border border-neutral-400 px-2 py-1.5 text-right font-semibold">Poids (kg)</th>
+            <th className="border border-neutral-400 px-2 py-1.5 text-right font-semibold">Distance (km)</th>
             <th className="border border-neutral-400 px-2 py-1.5 text-left font-semibold">Code</th>
             <th className="border border-neutral-400 px-2 py-1.5 text-left font-semibold">Observations</th>
           </tr>
@@ -110,13 +105,16 @@ export function BordereauDocument({
               </td>
               <td className="border border-neutral-400 px-2 py-1.5">{ligne.localite || '—'}</td>
               <td className="border border-neutral-400 px-2 py-1.5 text-right">{formatKg(ligne.poids_kg)}</td>
+              <td className="border border-neutral-400 px-2 py-1.5 text-right">
+                {ligne.distance_km != null ? formatDistance(ligne.distance_km) : '—'}
+              </td>
               <td className="border border-neutral-400 px-2 py-1.5">{ligne.code || '—'}</td>
               <td className="border border-neutral-400 px-2 py-1.5">{ligne.observations || '—'}</td>
             </tr>
           ))}
           {lignes.length === 0 && (
             <tr>
-              <td colSpan={5} className="border border-neutral-400 px-2 py-2 text-center text-neutral-500">
+              <td colSpan={6} className="border border-neutral-400 px-2 py-2 text-center text-neutral-500">
                 Aucun lot enregistré.
               </td>
             </tr>
@@ -125,10 +123,13 @@ export function BordereauDocument({
         <tfoot>
           <tr className="bg-neutral-100">
             <td colSpan={2} className="border border-neutral-400 px-2 py-1.5 font-semibold">
-              Total poids
+              Totaux
             </td>
             <td className="border border-neutral-400 px-2 py-1.5 text-right font-bold">
               {formatKg(totalPoids)}
+            </td>
+            <td className="border border-neutral-400 px-2 py-1.5 text-right font-bold">
+              {totalKm > 0 ? formatDistance(totalKm) : '—'}
             </td>
             <td colSpan={2} className="border border-neutral-400 px-2 py-1.5" />
           </tr>

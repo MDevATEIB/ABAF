@@ -14,7 +14,9 @@ export async function listerBsm(filtres: FiltresBsm = {}): Promise<BSM[]> {
 }
 
 export async function creerBsm(payload: {
-  numero: string;
+  /** Numéro du BSM. Optionnel : si absent/vide, le backend attribue une
+   *  valeur séquentielle par année (format `2026-0138`). */
+  numero?: string | null;
   saison_id: number;
   mission_id?: number;
   camion_id: number;

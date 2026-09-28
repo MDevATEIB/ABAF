@@ -42,11 +42,6 @@ const navItems: NavItem[] = [
       { label: 'Tarifs',      href: '/referentiels/tarifs' },
       { label: 'Prix Gasoil', href: '/referentiels/prix-gasoil' },
       { label: 'Clients',     href: '/referentiels/clients' },
-      { label: 'Camions',     href: '/referentiels/camions' },
-      { label: 'Chauffeurs',  href: '/referentiels/chauffeurs' },
-      { label: 'Usines',      href: '/referentiels/usines' },
-      { label: 'CGI',         href: '/referentiels/cgis' },
-      { label: 'AV',          href: '/referentiels/avs' },
     ],
   },
   {
@@ -54,9 +49,7 @@ const navItems: NavItem[] = [
     icon: <Truck size={17} />,
     href: '/operations',
     children: [
-      { label: 'Missions',    href: '/operations/missions' },
       { label: 'Pesées',      href: '/operations/pesees' },
-      { label: 'BSM / Gasoil', href: '/operations/bsm' },
       { label: 'Bordereaux',  href: '/operations/bordereaux' },
       { label: 'Livraisons',  href: '/operations/livraisons' },
     ],

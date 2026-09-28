@@ -5,10 +5,11 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 
 import {
-  Button, Input, Select, Modal, PageHeader, EmptyState, Spinner, ErrorMessage,
+  Button, Input, Select, Modal, PageHeader, EmptyState, Spinner, ErrorMessage, Pagination,
 } from '@/components/ui';
 import { useUsines } from '@/hooks/useUsines';
 import { useCgis, useCreerCgi, useModifierCgi } from '@/hooks/useCgis';
+import { usePagination } from '@/hooks/usePagination';
 import type { CGI } from '@/types';
 
 // ─── Schéma ──────────────────────────────────────────────────────────────────
@@ -86,11 +87,11 @@ export default function CgisPage() {
   const [editing, setEditing]             = useState<CGI | null>(null);
   const [mutationError, setMutationError] = useState<string | null>(null);
 
-  const usineOptions = usines.map((u) => ({ value: u.id, label: u.nom }));
-  const filtreOptions = [{ value: 0, label: 'Toutes les usines' }, ...usineOptions];
+  const pagination = usePagination(cgis);
 
-  // Retrouver le nom d'usine pour l'affichage dans le tableau
-  const usineMap = Object.fromEntries(usines.map((u) => [u.id, u.nom]));
+  const usineOptions  = usines.map((u) => ({ value: u.id, label: u.nom }));
+  const filtreOptions = [{ value: 0, label: 'Toutes les usines' }, ...usineOptions];
+  const usineMap      = Object.fromEntries(usines.map((u) => [u.id, u.nom]));
 
   async function handleCreate(values: FormValues) {
     setMutationError(null);
@@ -140,7 +141,7 @@ export default function CgisPage() {
           label="Filtrer par usine"
           options={filtreOptions}
           value={filtreUsineId ?? 0}
-          onChange={(e) => setFiltreUsineId(Number(e.target.value) || undefined)}
+          onChange={(e) => { setFiltreUsineId(Number(e.target.value) || undefined); pagination.reset(); }}
         />
       </div>
 
@@ -160,37 +161,47 @@ export default function CgisPage() {
           }
         />
       ) : (
-        <div className="overflow-x-auto rounded-lg border border-border">
-          <table className="w-full text-sm">
-            <thead className="bg-muted/50">
-              <tr>
-                <th className="px-4 py-3 text-left font-medium text-muted-foreground">Nom</th>
-                <th className="px-4 py-3 text-left font-medium text-muted-foreground">Usine</th>
-                <th className="px-4 py-3 text-left font-medium text-muted-foreground">Localité</th>
-                <th className="px-4 py-3 text-right font-medium text-muted-foreground">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {cgis.map((c) => (
-                <tr key={c.id} className="hover:bg-muted/30 transition-colors">
-                  <td className="px-4 py-3 font-medium text-foreground">{c.nom}</td>
-                  <td className="px-4 py-3 text-muted-foreground">{usineMap[c.usine_id] ?? '—'}</td>
-                  <td className="px-4 py-3 text-muted-foreground">{c.localite || '—'}</td>
-                  <td className="px-4 py-3">
-                    <div className="flex justify-end">
-                      <Button
-                        variant="ghost" size="sm" icon={<Pencil size={13} />}
-                        onClick={() => { setMutationError(null); setEditing(c); }}
-                      >
-                        Modifier
-                      </Button>
-                    </div>
-                  </td>
+        <>
+          <div className="overflow-x-auto rounded-lg border border-border">
+            <table className="w-full text-sm">
+              <thead className="bg-muted/50">
+                <tr>
+                  <th className="px-4 py-3 text-left font-medium text-muted-foreground">Nom</th>
+                  <th className="px-4 py-3 text-left font-medium text-muted-foreground">Usine</th>
+                  <th className="px-4 py-3 text-left font-medium text-muted-foreground">Localité</th>
+                  <th className="px-4 py-3 text-right font-medium text-muted-foreground">Actions</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {pagination.items.map((c) => (
+                  <tr key={c.id} className="hover:bg-muted/30 transition-colors">
+                    <td className="px-4 py-3 font-medium text-foreground">{c.nom}</td>
+                    <td className="px-4 py-3 text-muted-foreground">{usineMap[c.usine_id] ?? '—'}</td>
+                    <td className="px-4 py-3 text-muted-foreground">{c.localite || '—'}</td>
+                    <td className="px-4 py-3">
+                      <div className="flex justify-end">
+                        <Button
+                          variant="ghost" size="sm" icon={<Pencil size={13} />}
+                          onClick={() => { setMutationError(null); setEditing(c); }}
+                        >
+                          Modifier
+                        </Button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <Pagination
+            page={pagination.page}
+            totalPages={pagination.totalPages}
+            totalItems={pagination.totalItems}
+            pageSize={pagination.pageSize}
+            onPageChange={pagination.goToPage}
+            onPageSizeChange={pagination.setPageSize}
+          />
+        </>
       )}
 
       <Modal open={showCreate} onClose={() => { setShowCreate(false); setMutationError(null); }} title="Nouveau CGI">

@@ -176,6 +176,7 @@ export interface Bordereau {
   numero: string;
   saison_id: number;
   mission_id?: number;
+  bsm_id?: number;
   camion_id: number;
   chauffeur_id?: number;
   usine_id?: number;
@@ -201,6 +202,8 @@ export interface LigneBordereau {
   av_id?: number;
   localite?: string;
   poids_kg: number;
+  /** Distance de cette livraison ligne par ligne (par AV). */
+  distance_km?: number;
   code?: string;
   observations?: string;
 }

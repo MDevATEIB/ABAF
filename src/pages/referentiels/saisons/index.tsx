@@ -6,10 +6,11 @@ import { z } from 'zod';
 
 import {
   Button, Input, Badge, Modal, ConfirmDialog,
-  PageHeader, EmptyState, Spinner, ErrorMessage,
+  PageHeader, EmptyState, Spinner, ErrorMessage, Pagination,
 } from '@/components/ui';
 import {
   useSaisons, useCreerSaison, useModifierSaison, useCloturerSaison,
+  usePagination,
 } from '@/hooks';
 import type { Saison } from '@/types';
 
@@ -99,6 +100,8 @@ export default function SaisonsPage() {
   const [cloturant, setCloturant]         = useState<Saison | null>(null);
   const [mutationError, setMutationError] = useState<string | null>(null);
 
+  const pagination = usePagination(saisons);
+
   // ── Création ──────────────────────────────────────────────────────────────
   async function handleCreate(values: FormValues) {
     setMutationError(null);
@@ -172,55 +175,65 @@ export default function SaisonsPage() {
           }
         />
       ) : (
-        <div className="overflow-x-auto rounded-lg border border-border">
-          <table className="w-full text-sm">
-            <thead className="bg-muted/50">
-              <tr>
-                <th className="px-4 py-3 text-left font-medium text-muted-foreground">Libellé</th>
-                <th className="px-4 py-3 text-left font-medium text-muted-foreground">Début</th>
-                <th className="px-4 py-3 text-left font-medium text-muted-foreground">Fin</th>
-                <th className="px-4 py-3 text-left font-medium text-muted-foreground">Statut</th>
-                <th className="px-4 py-3 text-right font-medium text-muted-foreground">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {saisons.map((s) => (
-                <tr key={s.id} className="hover:bg-muted/30 transition-colors">
-                  <td className="px-4 py-3 font-medium text-foreground">{s.libelle}</td>
-                  <td className="px-4 py-3 text-muted-foreground">{formatDate(s.date_debut)}</td>
-                  <td className="px-4 py-3 text-muted-foreground">{formatDate(s.date_fin)}</td>
-                  <td className="px-4 py-3">{statutBadge(s.statut)}</td>
-                  <td className="px-4 py-3">
-                    <div className="flex justify-end gap-1">
-                      {s.statut === 'ouverte' && (
-                        <>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            icon={<Pencil size={13} />}
-                            onClick={() => { setMutationError(null); setEditing(s); }}
-                            title="Modifier"
-                          >
-                            Modifier
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            icon={<Lock size={13} />}
-                            onClick={() => setCloturant(s)}
-                            title="Clôturer"
-                          >
-                            Clôturer
-                          </Button>
-                        </>
-                      )}
-                    </div>
-                  </td>
+        <>
+          <div className="overflow-x-auto rounded-lg border border-border">
+            <table className="w-full text-sm">
+              <thead className="bg-muted/50">
+                <tr>
+                  <th className="px-4 py-3 text-left font-medium text-muted-foreground">Libellé</th>
+                  <th className="px-4 py-3 text-left font-medium text-muted-foreground">Début</th>
+                  <th className="px-4 py-3 text-left font-medium text-muted-foreground">Fin</th>
+                  <th className="px-4 py-3 text-left font-medium text-muted-foreground">Statut</th>
+                  <th className="px-4 py-3 text-right font-medium text-muted-foreground">Actions</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {pagination.items.map((s) => (
+                  <tr key={s.id} className="hover:bg-muted/30 transition-colors">
+                    <td className="px-4 py-3 font-medium text-foreground">{s.libelle}</td>
+                    <td className="px-4 py-3 text-muted-foreground">{formatDate(s.date_debut)}</td>
+                    <td className="px-4 py-3 text-muted-foreground">{formatDate(s.date_fin)}</td>
+                    <td className="px-4 py-3">{statutBadge(s.statut)}</td>
+                    <td className="px-4 py-3">
+                      <div className="flex justify-end gap-1">
+                        {s.statut === 'ouverte' && (
+                          <>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              icon={<Pencil size={13} />}
+                              onClick={() => { setMutationError(null); setEditing(s); }}
+                              title="Modifier"
+                            >
+                              Modifier
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              icon={<Lock size={13} />}
+                              onClick={() => setCloturant(s)}
+                              title="Clôturer"
+                            >
+                              Clôturer
+                            </Button>
+                          </>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <Pagination
+            page={pagination.page}
+            totalPages={pagination.totalPages}
+            totalItems={pagination.totalItems}
+            pageSize={pagination.pageSize}
+            onPageChange={pagination.goToPage}
+            onPageSizeChange={pagination.setPageSize}
+          />
+        </>
       )}
 
       {/* ── Modal création ─────────────────────────────────────────────── */}
