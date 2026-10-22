@@ -1,0 +1,9 @@
+{
+  "verdict": "CHANGES_REQUESTED",
+  "findings": [
+    "Sub-header column mislabelling — row-2 labels are misaligned with the data cells they sit above; col 6 displays montantBrutLigne but is headed 'Coton Graine'. Fix row-2 labels to match their data columns.",
+    "Per-row brut divergence from footer total — lb.distance_km is optional; the fallback to lf.distance_km (per-bordereau aggregate) produces incorrect per-row montantBrutLigne for bordereaux with weighings at different AV distances. Decide and store the canonical distance at LigneBordereau level.",
+    "Recomputed row totals vs stored footer total — montantBrutLigne is recalculated from scratch rather than from stored values, so rounding and the distance-fallback issue can produce visible row-vs-footer discrepancies. Validate with a real multi-line bordereau before shipping."
+  ],
+  "reviewDoc": "c:\\Dev\\ABAF\\.agents\\tasks\\facture-fix\\review.md"
+}

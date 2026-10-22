@@ -1,0 +1,25 @@
+{
+  "id": "FEAT-001",
+  "type": "feat",
+  "description": "Backend SQLite + Rust: ajouter 'intrant' à la couche de données. Migration v4 pour recréer tarifs et bordereaux avec CHECK étendu, mise à jour de la constante TYPES_FRET dans tarification.rs. Ces deux fichiers sont les seules sources de vérité Rust — tous les validateurs (tarif.rs, bordereau.rs) les consomment dynamiquement.",
+  "status": "pending",
+  "steps": [
+    "Lire src-tauri/src/db/mod.rs en entier pour confirmer la structure de appliquer_migrations_versionnees et le pattern des migrations v1/v2/v3.",
+    "Dans appliquer_migrations_versionnees, ajouter le bloc 'if version < 4 { migration_v4(conn)?; conn.execute_batch(\"PRAGMA user_version = 4\")?; }' après le bloc version < 3 existant.",
+    "Ajouter la fonction migration_v4(conn: &Connection) -> Result<()> après migration_v3. Elle doit: (a) Renommer tarifs → tarifs_v3, recréer tarifs avec CHECK (type_fret IN ('direct','retour','evacuation','transfert','intrant')), copier les données depuis tarifs_v3, DROP tarifs_v3. (b) Renommer bordereaux → bordereaux_v3, recréer bordereaux avec toutes les colonnes existantes (id, numero, saison_id, mission_id, bsm_id, camion_id, chauffeur_id, usine_id, cgi_id, date_bordereau, poids_vide_kg, poids_charge_kg, poids_net_kg GENERATED ALWAYS STORED, distance_km, type_fret CHECK étendu, tarif_applique, unite_tarif, montant_brut, statut, observations, created_at, updated_at), copier depuis bordereaux_v3 (sans poids_net_kg qui est généré), DROP bordereaux_v3, CREATE INDEX IF NOT EXISTS idx_bordereaux_bsm_id.",
+    "Ajouter un test #[test] fn migration_v4_ajoute_intrant() dans le bloc #[cfg(test)] de db/mod.rs: créer une base en mémoire, appeler run_migrations, puis vérifier qu'un INSERT INTO tarifs avec type_fret='intrant' réussit et qu'un INSERT avec type_fret='invalide' échoue.",
+    "Dans src-tauri/src/services/tarification.rs, modifier la ligne pub const TYPES_FRET: [&str; 4] = [...] pour pub const TYPES_FRET: [&str; 5] = [\"direct\", \"retour\", \"evacuation\", \"transfert\", \"intrant\"]."
+  ],
+  "acceptance_criteria": [
+    "cargo test -p abaf --lib passe tous les tests existants (migration_v1_convertit_lancien_bareme, migration_sur_base_neuve_avec_tranche_ouverte, etc.)",
+    "Le nouveau test migration_v4_ajoute_intrant passe: INSERT avec type_fret='intrant' réussit, INSERT avec type_fret='invalide' échoue",
+    "cargo check retourne zéro erreur",
+    "TYPES_FRET dans tarification.rs contient exactement 5 éléments incluant 'intrant'"
+  ],
+  "verification": [
+    "cd c:/Dev/ABAF/src-tauri && cargo test -p abaf --lib 2>&1",
+    "cd c:/Dev/ABAF/src-tauri && cargo check 2>&1"
+  ],
+  "blocked_reason": null,
+  "findings": ""
+}

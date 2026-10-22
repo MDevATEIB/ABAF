@@ -1,0 +1,26 @@
+{
+  "id": "FEAT-002",
+  "type": "feat",
+  "description": "Frontend TypeScript: propager 'intrant' dans toute la couche TS/React. Dépend de FEAT-001 (le backend accepte déjà 'intrant'). Modifications: TypeFret union, TYPES_FRET array + LIBELLES_COURTS_FRET dans utils, schémas Zod dans les pages Tarifs et Bordereaux, colonne INTRANT dans le tableau NB ARTICLE 9 du template facture.",
+  "status": "pending",
+  "steps": [
+    "Dans src/types/index.ts, modifier TypeFret: ajouter | 'intrant' → export type TypeFret = 'direct' | 'retour' | 'evacuation' | 'transfert' | 'intrant'.",
+    "Dans src/utils/index.ts, ajouter { value: 'intrant', label: 'Intrant' } dans le tableau TYPES_FRET (entre evacuation et transfert pour ordre logique). Ajouter intrant: 'Intrant' dans LIBELLES_COURTS_FRET Record<TypeFret, string>.",
+    "Dans src/pages/referentiels/tarifs/index.tsx, mettre à jour le schéma Zod: z.enum(['direct', 'retour', 'evacuation', 'transfert']) → z.enum(['direct', 'retour', 'evacuation', 'transfert', 'intrant']).",
+    "Dans src/pages/operations/bordereaux/index.tsx, deux modifications: (a) Dans FormValues type explicite (~ligne 70), remplacer type_fret: 'direct' | 'retour' | 'evacuation' | 'transfert' par type_fret: TypeFret (importer TypeFret depuis @/types si pas déjà importé). (b) Dans le schéma Zod schema (~ligne 100), remplacer z.enum(['direct', 'retour', 'evacuation', 'transfert']) par z.enum(['direct', 'retour', 'evacuation', 'transfert', 'intrant']).",
+    "Dans src/templates/factureDocument.tsx, trois modifications: (a) Ajouter intrant?: Tarif dans le type TarifRow. (b) Dans la boucle de construction tarifRows, ajouter un cas pour type_fret === 'intrant' qui crée une clé 'intrant-{min}-{max}' et assigne t.type_fret === 'intrant' à row.intrant (ne pas le grouper avec direct/retour). (c) Dans le JSX du tableau NB ARTICLE 9: ajouter un <th> INTRANT après FRET RETOUR, ajouter une <td> {row.intrant ? fmtTarif(row.intrant) : ''} après la <td> retour, et mettre le colSpan du fallback 'Aucun tarif' de 3 à 4."
+  ],
+  "acceptance_criteria": [
+    "npm run build retourne '✓ built in Xs' sans aucune erreur TypeScript",
+    "TypeFret contient exactement 5 membres incluant 'intrant'",
+    "TYPES_FRET array dans utils contient 5 entrées dont intrant avec label 'Intrant'",
+    "LIBELLES_COURTS_FRET contient la clé 'intrant' avec valeur 'Intrant'",
+    "Les deux z.enum dans tarifs/index.tsx et bordereaux/index.tsx incluent 'intrant'",
+    "Le tableau NB ARTICLE 9 du template facture a 4 colonnes de tarifs: FRET DIRECT, FRET RETOUR, INTRANT"
+  ],
+  "verification": [
+    "cd c:/Dev/ABAF && npm run build 2>&1"
+  ],
+  "blocked_reason": null,
+  "findings": ""
+}

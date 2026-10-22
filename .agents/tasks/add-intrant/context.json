@@ -1,0 +1,26 @@
+{
+  "project_type": "Tauri v2 desktop app — Rust/SQLite backend + React 19/TypeScript/Vite frontend",
+  "language": "Rust (backend) + TypeScript/TSX (frontend)",
+  "build_system": "Cargo (Rust, workspace root src-tauri/), npm/Vite (TS/React, workspace root c:/Dev/ABAF/). Build frontend: npm run build (tsc + vite build). Build/check Rust: cargo check or cargo test -p abaf --lib from c:/Dev/ABAF/src-tauri/. Full Tauri app build: npm run tauri build (not needed for verification).",
+  "test_framework": "Rust built-in test framework (#[cfg(test)] modules in src-tauri/src/db/mod.rs and src-tauri/src/services/tarification.rs). No JS test framework configured.",
+  "build_command": "npm run build (frontend); cargo check (Rust)",
+  "test_command": "cargo test -p abaf --lib (run from c:/Dev/ABAF/src-tauri/)",
+  "verification_instructions": "1. cd c:/Dev/ABAF && npm run build — expect '✓ built in Xs', zero TS errors. 2. cd c:/Dev/ABAF/src-tauri && cargo test -p abaf --lib — all tests pass including new migration_v4 test. 3. cd c:/Dev/ABAF/src-tauri && cargo check — zero errors.",
+  "snapshot_or_generated_files": null,
+  "environment_constraints": "All commands run from c:/Dev/ABAF (npm) or c:/Dev/ABAF/src-tauri (cargo). Windows PowerShell. The dev server should NOT be started. Do not run 'tauri dev' or 'tauri build' — use npm run build and cargo check instead.",
+  "contribution_requirements": "No AGENTS.md or CONTRIBUTING.md found. Follow existing code style: French comments, Rust idiomatic patterns, React with react-hook-form + zod for forms.",
+  "key_patterns": "SQLite migrations: versioned via PRAGMA user_version in src-tauri/src/db/mod.rs — appliquer_migrations_versionnees() checks version < N and calls migration_vN(). Cannot ALTER TABLE to change CHECK constraints in SQLite; must rename→recreate→copy→drop. TYPES_FRET const in tarification.rs is the single Rust source of truth for valid type_fret values, consumed by verifier_valeurs() in tarif.rs and normaliser_type_fret() in bordereau.rs. TypeFret union in src/types/index.ts is the TS source of truth. TYPES_FRET array in src/utils/index.ts powers all <Select> dropdowns. Zod schemas in page files contain hardcoded z.enum([...]) that must also be updated.",
+  "relevant_files": [
+    "src-tauri/src/db/mod.rs",
+    "src-tauri/src/services/tarification.rs",
+    "src-tauri/src/commands/tarif.rs",
+    "src-tauri/src/commands/bordereau.rs",
+    "src-tauri/migrations/001_initial.sql",
+    "src/types/index.ts",
+    "src/utils/index.ts",
+    "src/pages/referentiels/tarifs/index.tsx",
+    "src/pages/operations/bordereaux/index.tsx",
+    "src/templates/factureDocument.tsx"
+  ],
+  "directory_structure": "c:/Dev/ABAF/ — project root with package.json. src/ — React/TS frontend (pages/, components/, hooks/, types/, utils/, templates/). src-tauri/ — Rust/Tauri backend (src/commands/, src/models/, src/services/, src/db/, migrations/)."
+}

@@ -1,0 +1,9 @@
+[build]
+# Limiter à 2 jobs parallèles pour réduire la consommation RAM
+# Tauri + ses dépendances Windows consomment beaucoup de mémoire à la compilation
+jobs = 2
+
+[profile.dev]
+# Désactiver le debug info complet réduit aussi la RAM nécessaire
+debug = 1          # 0 = aucun, 1 = line tables seulement, 2 = complet (défaut)
+opt-level = 0

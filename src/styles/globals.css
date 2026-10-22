@@ -1,0 +1,212 @@
+@import "tailwindcss";
+
+@theme {
+  --color-background: hsl(0 0% 100%);
+  --color-foreground: hsl(222.2 84% 4.9%);
+
+  --color-card: hsl(0 0% 100%);
+  --color-card-foreground: hsl(222.2 84% 4.9%);
+
+  --color-popover: hsl(0 0% 100%);
+  --color-popover-foreground: hsl(222.2 84% 4.9%);
+
+  /* Couleur primaire ABAF : bleu professionnel */
+  --color-primary: hsl(217 91% 40%);
+  --color-primary-foreground: hsl(210 40% 98%);
+
+  --color-secondary: hsl(210 40% 96.1%);
+  --color-secondary-foreground: hsl(222.2 47.4% 11.2%);
+
+  --color-muted: hsl(210 40% 96.1%);
+  --color-muted-foreground: hsl(215.4 16.3% 46.9%);
+
+  --color-accent: hsl(210 40% 96.1%);
+  --color-accent-foreground: hsl(222.2 47.4% 11.2%);
+
+  --color-destructive: hsl(0 84.2% 60.2%);
+  --color-destructive-foreground: hsl(210 40% 98%);
+
+  --color-border: hsl(214.3 31.8% 91.4%);
+  --color-input: hsl(214.3 31.8% 91.4%);
+  --color-ring: hsl(217 91% 40%);
+
+  --radius: 0.5rem;
+  --radius-lg: var(--radius);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-sm: calc(var(--radius) - 4px);
+
+  --animate-accordion-down: accordion-down 0.2s ease-out;
+  --animate-accordion-up: accordion-up 0.2s ease-out;
+
+  @keyframes accordion-down {
+    from { height: 0; }
+    to { height: var(--radix-accordion-content-height); }
+  }
+
+  @keyframes accordion-up {
+    from { height: var(--radix-accordion-content-height); }
+    to { height: 0; }
+  }
+}
+
+/* Dark mode via .dark class */
+@layer base {
+  .dark {
+    --color-background: hsl(222.2 84% 4.9%);
+    --color-foreground: hsl(210 40% 98%);
+
+    --color-card: hsl(222.2 84% 4.9%);
+    --color-card-foreground: hsl(210 40% 98%);
+
+    --color-popover: hsl(222.2 84% 4.9%);
+    --color-popover-foreground: hsl(210 40% 98%);
+
+    --color-primary: hsl(217 91% 55%);
+    --color-primary-foreground: hsl(222.2 47.4% 11.2%);
+
+    --color-secondary: hsl(217.2 32.6% 17.5%);
+    --color-secondary-foreground: hsl(210 40% 98%);
+
+    --color-muted: hsl(217.2 32.6% 17.5%);
+    --color-muted-foreground: hsl(215 20.2% 65.1%);
+
+    --color-accent: hsl(217.2 32.6% 17.5%);
+    --color-accent-foreground: hsl(210 40% 98%);
+
+    --color-destructive: hsl(0 62.8% 30.6%);
+    --color-destructive-foreground: hsl(210 40% 98%);
+
+    --color-border: hsl(217.2 32.6% 17.5%);
+    --color-input: hsl(217.2 32.6% 17.5%);
+    --color-ring: hsl(217 91% 55%);
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family: Inter, Avenir, Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Empêcher la sélection de texte native Tauri sur les éléments UI */
+  button,
+  label,
+  nav {
+    user-select: none;
+  }
+
+  /* Scrollbar personnalisée */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-muted;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-muted-foreground/30 rounded-full;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-muted-foreground/50;
+  }
+}
+
+/* Utilitaires spécifiques ABAF */
+@layer utilities {
+  .print-only {
+    display: none;
+  }
+
+  @media print {
+    .print-only {
+      display: block;
+    }
+
+    .no-print {
+      display: none !important;
+    }
+  }
+}
+
+/* ── Documents imprimables (AGENT.md §20) ──────────────────────────────────── */
+/* Marges de page physiques : appliquées à chaque page par le navigateur. */
+@page {
+  size: A4 portrait;
+  margin: 12mm;
+}
+
+/* Feuille A4 simulée à l'écran ; à l'impression les marges viennent de @page. */
+.feuille-document {
+  width: 210mm;
+  min-height: 297mm;
+  margin: 0 auto;
+  padding: 12mm;
+  background: #ffffff;
+  color: #000000;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.2);
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+
+/* Exemplaires multiples d'une facture (original + copies) : feuillets empilés. */
+.feuillet-document + .feuillet-document {
+  margin-top: 24px;
+}
+
+@media print {
+  html,
+  body {
+    height: auto !important;
+    background: #ffffff !important;
+  }
+
+  .app-layout {
+    display: block !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+
+  .app-cadre {
+    display: block !important;
+    overflow: visible !important;
+  }
+
+  .app-contenu {
+    overflow: visible !important;
+    padding: 0 !important;
+  }
+
+  .feuille-document {
+    width: auto;
+    min-height: 0;
+    margin: 0;
+    padding: 0;
+    box-shadow: none;
+  }
+
+  .feuille-document tr {
+    break-inside: avoid;
+  }
+
+  /* Chaque exemplaire d'une facture s'imprime sur sa propre page. */
+  .feuillet-document {
+    break-after: page;
+  }
+
+  .feuillet-document:last-child {
+    break-after: auto;
+  }
+
+  .feuillet-document + .feuillet-document {
+    margin-top: 0;
+  }
+}

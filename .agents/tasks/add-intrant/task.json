@@ -1,0 +1,7 @@
+{
+  "task_id": "task-add-intrant",
+  "task_description": "Ajouter le type de fret 'intrant' au système ABAF : migration SQLite v4 pour étendre les contraintes CHECK, mise à jour de la constante Rust TYPES_FRET, du type TypeScript TypeFret, des utils, des schémas Zod dans les pages Bordereaux et Tarifs, et du tableau NB ARTICLE 9 dans le template facture.",
+  "status": "pending",
+  "feature_order": ["FEAT-001", "FEAT-002"],
+  "blocked_reason": null
+}
