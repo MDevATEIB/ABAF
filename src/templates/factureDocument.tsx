@@ -113,7 +113,12 @@ function FeuilletFacture({
       tarifRows.push({ key: `evac-${t.id}`, label: 'EVACUATION GRAINE', evacuation: t });
       continue;
     }
-    if (t.type_fret === 'intrant') {
+    if (
+      t.type_fret === 'intrant_direct' ||
+      t.type_fret === 'intrant_retour' ||
+      t.type_fret === 'intrant_evacuation' ||
+      t.type_fret === 'intrant_transfert'
+    ) {
       const key = `intrant-${t.distance_min}-${t.distance_max ?? 'max'}`;
       tarifRows.push({ key, label: labelDistance(t), intrant: t });
       continue;
@@ -235,7 +240,7 @@ function FeuilletFacture({
             </th>
             {/* Montant Brut sub-columns (2) */}
             <th className="border border-black px-1 py-1 text-center font-semibold">
-              Traif
+              Tarif
             </th>
             <th className="border border-black px-1 py-1 text-center font-semibold">
               Coton Graine
@@ -269,32 +274,44 @@ function FeuilletFacture({
             if (lignesBdr.length === 0) {
               // Guard: treat 0 as "no distance" to avoid silently using wrong branch
               const distanceKm = lf.distance_km > 0 ? lf.distance_km : 0;
+              const uniteTarif = bdr?.unite_tarif ?? (distanceKm > 90 ? 'fcfa_tkm' : 'fcfa_tonne');
               const montantBrutLf =
-                distanceKm <= 90
-                  ? (lf.poids_net_kg / 1000) * lf.tarif_tonne
-                  : (lf.poids_net_kg / 1000) * distanceKm * lf.tarif_tonne;
+                uniteTarif === 'fcfa_tkm'
+                  ? (lf.poids_net_kg / 1000) * distanceKm * lf.tarif_tonne
+                  : (lf.poids_net_kg / 1000) * lf.tarif_tonne;
               const montantNetLf = montantBrutLf - lf.montant_gasoil;
+              const estIntrant = bdr?.type_fret?.startsWith('intrant') ?? false;
               return (
                 <tr key={lf.id}>
                   <td className="border border-black px-1 py-1 text-center">
                     {bdr?.numero ?? '—'}
                   </td>
+                  {/* col 2: Coton Graine */}
                   <td className="border border-black px-1 py-1 text-right">
-                    {tonnes(lf.poids_net_kg)}
+                    {estIntrant ? '\u00a0' : tonnes(lf.poids_net_kg)}
                   </td>
-                  <td className="border border-black px-1 py-1 text-right">&nbsp;</td>
+                  {/* col 3: Intrant */}
+                  <td className="border border-black px-1 py-1 text-right">
+                    {estIntrant ? tonnes(lf.poids_net_kg) : '\u00a0'}
+                  </td>
                   <td className="border border-black px-1 py-1 text-right">
                     {numFr(distanceKm)}
                   </td>
                   <td className="border border-black px-1 py-1 text-right">
                     {numFr(lf.tarif_tonne)}
                   </td>
+                  {/* col 6: Montant Brut Coton Graine */}
+                  <td className="border border-black px-1 py-1 text-right">
+                    {estIntrant ? '\u00a0' : numFr(Math.round(montantBrutLf))}
+                  </td>
+                  {/* col 7: Montant Brut Intrant */}
+                  <td className="border border-black px-1 py-1 text-right">
+                    {estIntrant ? numFr(Math.round(montantBrutLf)) : '0'}
+                  </td>
+                  {/* col 8: Total */}
                   <td className="border border-black px-1 py-1 text-right">
                     {numFr(Math.round(montantBrutLf))}
                   </td>
-                  <td className="border border-black px-1 py-1 text-right">0</td>
-                  {/* col 8: Total (sum of intrant amounts — always 0) */}
-                  <td className="border border-black px-1 py-1 text-right">0</td>
                   <td className="border border-black px-1 py-1 text-right">
                     {bsmLigne ? numFr(bsmLigne.quantite_litres) : ''}
                   </td>
@@ -314,18 +331,20 @@ function FeuilletFacture({
             return lignesBdr.map((lb, idx) => {
               const isFirst = idx === 0;
               // Use lb.distance_km when present and > 0; fall back to lf.distance_km.
-              // Guard: if both are 0/undefined the per-km branch cannot be used, so
-              // montantBrutLigne degrades to the flat tarif formula (distanceKm <= 90).
               const distanceKm = (lb.distance_km != null && lb.distance_km > 0)
                 ? lb.distance_km
                 : (lf.distance_km > 0 ? lf.distance_km : 0);
               const tonnesLb = lb.poids_kg / 1000;
+              // Use unite_tarif stored on the bordereau to pick the right formula,
+              // rather than hardcoding the 90 km threshold.
+              const uniteTarif = bdr?.unite_tarif ?? (distanceKm > 90 ? 'fcfa_tkm' : 'fcfa_tonne');
               const montantBrutLigne =
-                distanceKm <= 90
-                  ? tonnesLb * lf.tarif_tonne
-                  : tonnesLb * distanceKm * lf.tarif_tonne;
+                uniteTarif === 'fcfa_tkm'
+                  ? tonnesLb * distanceKm * lf.tarif_tonne
+                  : tonnesLb * lf.tarif_tonne;
               const gasoilMontant = isFirst ? lf.montant_gasoil : 0;
               const montantNetLigne = montantBrutLigne - gasoilMontant;
+              const estIntrant = bdr?.type_fret?.startsWith('intrant') ?? false;
 
               return (
                 <tr key={`${lf.id}-${lb.id}`}>
@@ -333,12 +352,14 @@ function FeuilletFacture({
                   <td className="border border-black px-1 py-1 text-center">
                     {isFirst ? (bdr?.numero ?? '—') : ''}
                   </td>
-                  {/* col 2: Coton Graine (kg → tonnes) */}
+                  {/* col 2: Coton Graine */}
                   <td className="border border-black px-1 py-1 text-right">
-                    {tonnes(lb.poids_kg)}
+                    {estIntrant ? '\u00a0' : tonnes(lb.poids_kg)}
                   </td>
                   {/* col 3: Intrant */}
-                  <td className="border border-black px-1 py-1 text-right">&nbsp;</td>
+                  <td className="border border-black px-1 py-1 text-right">
+                    {estIntrant ? tonnes(lb.poids_kg) : '\u00a0'}
+                  </td>
                   {/* col 4: Distance */}
                   <td className="border border-black px-1 py-1 text-right">
                     {numFr(distanceKm)}
@@ -349,12 +370,16 @@ function FeuilletFacture({
                   </td>
                   {/* col 6: Montant Brut Coton Graine */}
                   <td className="border border-black px-1 py-1 text-right">
+                    {estIntrant ? '\u00a0' : numFr(Math.round(montantBrutLigne))}
+                  </td>
+                  {/* col 7: Montant Brut Intrant */}
+                  <td className="border border-black px-1 py-1 text-right">
+                    {estIntrant ? numFr(Math.round(montantBrutLigne)) : '0'}
+                  </td>
+                  {/* col 8: Total */}
+                  <td className="border border-black px-1 py-1 text-right">
                     {numFr(Math.round(montantBrutLigne))}
                   </td>
-                  {/* col 7: Intrant montant */}
-                  <td className="border border-black px-1 py-1 text-right">0</td>
-                  {/* col 8: Total (sum of intrant amounts — always 0 while no intrants exist) */}
-                  <td className="border border-black px-1 py-1 text-right">0</td>
                   {/* col 9: Gazoil Qte — first row only */}
                   <td className="border border-black px-1 py-1 text-right">
                     {isFirst && bsmLigne ? numFr(bsmLigne.quantite_litres) : ''}
@@ -379,10 +404,24 @@ function FeuilletFacture({
         <tfoot>
           <tr className="bg-neutral-100 font-semibold">
             <td className="border border-black px-1 py-1 text-center">TOTAL</td>
+            {/* col 2: Total Coton Graine */}
             <td className="border border-black px-1 py-1 text-right">
-              {tonnes(totalPoidsKg)}
+              {tonnes(lignesTransport.reduce((sum, lf) => {
+                const bdr = bordereauParId.get(lf.bordereau_id!);
+                if (bdr?.type_fret?.startsWith('intrant')) return sum;
+                const lbs = lignesBordereauParBordereauId.get(lf.bordereau_id!) ?? [];
+                return sum + (lbs.length > 0 ? lbs.reduce((s, lb) => s + lb.poids_kg, 0) : lf.poids_net_kg);
+              }, 0))}
             </td>
-            <td className="border border-black px-1 py-1 text-right">0</td>
+            {/* col 3: Total Intrant */}
+            <td className="border border-black px-1 py-1 text-right">
+              {tonnes(lignesTransport.reduce((sum, lf) => {
+                const bdr = bordereauParId.get(lf.bordereau_id!);
+                if (!bdr?.type_fret?.startsWith('intrant')) return sum;
+                const lbs = lignesBordereauParBordereauId.get(lf.bordereau_id!) ?? [];
+                return sum + (lbs.length > 0 ? lbs.reduce((s, lb) => s + lb.poids_kg, 0) : lf.poids_net_kg);
+              }, 0))}
+            </td>
             <td className="border border-black px-1 py-1">&nbsp;</td>
             <td className="border border-black px-1 py-1">&nbsp;</td>
             <td className="border border-black px-1 py-1 text-right">
