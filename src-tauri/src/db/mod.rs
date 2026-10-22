@@ -61,6 +61,10 @@ fn appliquer_migrations_versionnees(conn: &Connection) -> Result<()> {
         migration_v4(conn)?;
         conn.execute_batch("PRAGMA user_version = 4")?;
     }
+    if version < 5 {
+        migration_v5(conn)?;
+        conn.execute_batch("PRAGMA user_version = 5")?;
+    }
     Ok(())
 }
 
@@ -153,21 +157,16 @@ fn migration_v3(conn: &Connection) -> Result<()> {
 /// → drop pour chacune des deux tables. Les FK sont désactivées pendant la
 /// migration pour permettre le DROP de la table intermédiaire.
 fn migration_v4(conn: &Connection) -> Result<()> {
-    // Désactive temporairement les FK pour éviter les violations lors du DROP
-    // de la table intermédiaire (lignes_bordereau → bordereaux).
     conn.execute_batch("PRAGMA foreign_keys = OFF;")?;
 
     // ── tarifs ───────────────────────────────────────────────────────────────
-    // Si tarifs_v3 n'existe pas encore, on renomme tarifs → tarifs_v3.
-    // Si elle existe déjà (migration interrompue), on saute le RENAME.
+    // Idempotent : si tarifs_v3 existe déjà (migration interrompue), on saute le RENAME.
     let tarifs_v3_existe = table_existe(conn, "tarifs_v3")?;
     if !tarifs_v3_existe {
         conn.execute_batch("ALTER TABLE tarifs RENAME TO tarifs_v3;")?;
     }
-    // Recrée toujours tarifs avec le CHECK étendu (DROP IF EXISTS par sécurité).
     conn.execute_batch(
         "DROP TABLE IF EXISTS tarifs;
-
          CREATE TABLE tarifs (
              id              INTEGER PRIMARY KEY AUTOINCREMENT,
              saison_id       INTEGER NOT NULL REFERENCES saisons(id),
@@ -182,26 +181,26 @@ fn migration_v4(conn: &Connection) -> Result<()> {
              updated_at      TEXT    NOT NULL DEFAULT (datetime('now')),
              CHECK (distance_max IS NULL OR distance_max > distance_min)
          );
-
          INSERT INTO tarifs
              (id, saison_id, type_fret, distance_min, distance_max,
               unite_tarif, tarif, created_at, updated_at)
          SELECT id, saison_id, type_fret, distance_min, distance_max,
                 unite_tarif, tarif, created_at, updated_at
          FROM tarifs_v3;
-
          DROP TABLE tarifs_v3;",
     )?;
 
     // ── bordereaux ───────────────────────────────────────────────────────────
-    // Même logique : si bordereaux_v3 existe déjà, le RENAME a déjà eu lieu.
+    // Idempotent : si bordereaux_v3 existe déjà, le RENAME a déjà eu lieu.
     let bordereaux_v3_existe = table_existe(conn, "bordereaux_v3")?;
     if !bordereaux_v3_existe {
         conn.execute_batch("ALTER TABLE bordereaux RENAME TO bordereaux_v3;")?;
     }
+    // bordereaux_v3 existe maintenant dans tous les cas.
+    // On vérifie que c'est une base complète (pas un schéma de test minimaliste).
+    let a_numero = colonne_existe(conn, "bordereaux_v3", "numero")?;
     conn.execute_batch(
         "DROP TABLE IF EXISTS bordereaux;
-
          CREATE TABLE bordereaux (
              id              INTEGER PRIMARY KEY AUTOINCREMENT,
              numero          TEXT    NOT NULL UNIQUE,
@@ -234,11 +233,7 @@ fn migration_v4(conn: &Connection) -> Result<()> {
              updated_at      TEXT    NOT NULL DEFAULT (datetime('now'))
          );",
     )?;
-
-    // Copie des données uniquement si la table d'origine contient les colonnes
-    // complètes (bases v3 réelles). Les bases de test minimalistes n'ont pas
-    // toutes les colonnes ; on ne copie rien dans ce cas.
-    if colonne_existe(conn, "bordereaux_v3", "numero")? {
+    if a_numero {
         conn.execute_batch(
             "INSERT INTO bordereaux
                  (id, numero, saison_id, mission_id, bsm_id, camion_id, chauffeur_id,
@@ -252,9 +247,8 @@ fn migration_v4(conn: &Connection) -> Result<()> {
              FROM bordereaux_v3;",
         )?;
     }
-
     conn.execute_batch(
-        "DROP TABLE bordereaux_v3;
+        "DROP TABLE IF EXISTS bordereaux_v3;
          CREATE INDEX IF NOT EXISTS idx_bordereaux_bsm_id ON bordereaux(bsm_id);
          PRAGMA foreign_keys = ON;",
     )?;
@@ -262,7 +256,123 @@ fn migration_v4(conn: &Connection) -> Result<()> {
     Ok(())
 }
 
-/// Vrai si la table `nom` existe dans la base (via `sqlite_master`).
+/// Migration v5 : remplace la valeur générique `'intrant'` par quatre valeurs
+/// distinctes (`'intrant_direct'`, `'intrant_retour'`, `'intrant_evacuation'`,
+/// `'intrant_transfert'`) dans les CHECK de `tarifs` et `bordereaux`.
+/// Les éventuelles lignes déjà enregistrées avec `type_fret = 'intrant'` sont
+/// converties en `'intrant_direct'` (valeur la plus courante).
+fn migration_v5(conn: &Connection) -> Result<()> {
+    conn.execute_batch("PRAGMA foreign_keys = OFF;")?;
+
+    // ── tarifs ────────────────────────────────────────────────────────────────
+    let tarifs_v4_existe = table_existe(conn, "tarifs_v4")?;
+    if !tarifs_v4_existe {
+        conn.execute_batch(
+            "UPDATE tarifs SET type_fret = 'intrant_direct' WHERE type_fret = 'intrant';
+             ALTER TABLE tarifs RENAME TO tarifs_v4;",
+        )?;
+    }
+    conn.execute_batch(
+        "DROP TABLE IF EXISTS tarifs;
+         CREATE TABLE tarifs (
+             id              INTEGER PRIMARY KEY AUTOINCREMENT,
+             saison_id       INTEGER NOT NULL REFERENCES saisons(id),
+             type_fret       TEXT    NOT NULL DEFAULT 'direct'
+                             CHECK (type_fret IN (
+                                 'direct', 'retour', 'evacuation', 'transfert',
+                                 'intrant_direct', 'intrant_retour',
+                                 'intrant_evacuation', 'intrant_transfert'
+                             )),
+             distance_min    REAL    NOT NULL,
+             distance_max    REAL,
+             unite_tarif     TEXT    NOT NULL DEFAULT 'fcfa_tkm'
+                             CHECK (unite_tarif IN ('fcfa_tonne', 'fcfa_tkm')),
+             tarif           REAL    NOT NULL,
+             created_at      TEXT    NOT NULL DEFAULT (datetime('now')),
+             updated_at      TEXT    NOT NULL DEFAULT (datetime('now')),
+             CHECK (distance_max IS NULL OR distance_max > distance_min)
+         );
+         INSERT INTO tarifs
+             (id, saison_id, type_fret, distance_min, distance_max,
+              unite_tarif, tarif, created_at, updated_at)
+         SELECT id, saison_id, type_fret, distance_min, distance_max,
+                unite_tarif, tarif, created_at, updated_at
+         FROM tarifs_v4;
+         DROP TABLE tarifs_v4;",
+    )?;
+
+    // ── bordereaux ────────────────────────────────────────────────────────────
+    let bordereaux_v4_existe = table_existe(conn, "bordereaux_v4")?;
+    if !bordereaux_v4_existe {
+        conn.execute_batch(
+            "UPDATE bordereaux SET type_fret = 'intrant_direct'
+              WHERE type_fret = 'intrant';
+             ALTER TABLE bordereaux RENAME TO bordereaux_v4;",
+        )?;
+    }
+    let a_numero = colonne_existe(conn, "bordereaux_v4", "numero")?;
+    conn.execute_batch(
+        "DROP TABLE IF EXISTS bordereaux;
+         CREATE TABLE bordereaux (
+             id              INTEGER PRIMARY KEY AUTOINCREMENT,
+             numero          TEXT    NOT NULL UNIQUE,
+             saison_id       INTEGER NOT NULL REFERENCES saisons(id),
+             mission_id      INTEGER REFERENCES missions(id),
+             bsm_id          INTEGER REFERENCES bsm(id),
+             camion_id       INTEGER NOT NULL REFERENCES camions(id),
+             chauffeur_id    INTEGER REFERENCES chauffeurs(id),
+             usine_id        INTEGER REFERENCES usines(id),
+             cgi_id          INTEGER REFERENCES cgis(id),
+             date_bordereau  TEXT    NOT NULL,
+             poids_vide_kg   REAL,
+             poids_charge_kg REAL,
+             poids_net_kg    REAL    GENERATED ALWAYS AS (
+                                 CASE
+                                     WHEN poids_charge_kg IS NOT NULL AND poids_vide_kg IS NOT NULL
+                                     THEN MAX(0, poids_charge_kg - poids_vide_kg)
+                                     ELSE NULL
+                                 END
+                             ) STORED,
+             distance_km     REAL,
+             type_fret       TEXT    CHECK (type_fret IN (
+                                 'direct', 'retour', 'evacuation', 'transfert',
+                                 'intrant_direct', 'intrant_retour',
+                                 'intrant_evacuation', 'intrant_transfert'
+                             )),
+             tarif_applique  REAL,
+             unite_tarif     TEXT    CHECK (unite_tarif IN ('fcfa_tonne', 'fcfa_tkm')),
+             montant_brut    REAL,
+             statut          TEXT    NOT NULL DEFAULT 'brouillon'
+                             CHECK (statut IN ('brouillon', 'valide', 'facture')),
+             observations    TEXT,
+             created_at      TEXT    NOT NULL DEFAULT (datetime('now')),
+             updated_at      TEXT    NOT NULL DEFAULT (datetime('now'))
+         );",
+    )?;
+    if a_numero {
+        conn.execute_batch(
+            "INSERT INTO bordereaux
+                 (id, numero, saison_id, mission_id, bsm_id, camion_id, chauffeur_id,
+                  usine_id, cgi_id, date_bordereau, poids_vide_kg, poids_charge_kg,
+                  distance_km, type_fret, tarif_applique, unite_tarif, montant_brut,
+                  statut, observations, created_at, updated_at)
+             SELECT id, numero, saison_id, mission_id, bsm_id, camion_id, chauffeur_id,
+                    usine_id, cgi_id, date_bordereau, poids_vide_kg, poids_charge_kg,
+                    distance_km, type_fret, tarif_applique, unite_tarif, montant_brut,
+                    statut, observations, created_at, updated_at
+             FROM bordereaux_v4;",
+        )?;
+    }
+    conn.execute_batch(
+        "DROP TABLE IF EXISTS bordereaux_v4;
+         CREATE INDEX IF NOT EXISTS idx_bordereaux_bsm_id ON bordereaux(bsm_id);
+         PRAGMA foreign_keys = ON;",
+    )?;
+
+    Ok(())
+}
+
+
 fn table_existe(conn: &Connection, nom: &str) -> Result<bool> {
     let n: i64 = conn.query_row(
         "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name=?1",
@@ -379,7 +489,7 @@ mod tests {
         let version: i64 = conn
             .query_row("PRAGMA user_version", [], |row| row.get(0))
             .unwrap();
-        assert_eq!(version, 4, "la base doit être marquée en version 4 après toutes les migrations");
+        assert_eq!(version, 5, "la base doit être marquée en version 5 après toutes les migrations");
 
         assert!(!colonne_existe(&conn, "tarifs", "prix_tonne_km").unwrap());
 
@@ -407,7 +517,7 @@ mod tests {
         let version: i64 = conn
             .query_row("PRAGMA user_version", [], |row| row.get(0))
             .unwrap();
-        assert_eq!(version, 4);
+        assert_eq!(version, 5);
         assert!(!colonne_existe(&conn, "tarifs", "prix_tonne_km").unwrap());
 
         conn.execute(
@@ -552,19 +662,18 @@ mod tests {
         let _ = std::fs::remove_file(&copie);
     }
 
-    /// Vérifie que la migration v4 étend correctement les CHECK de `type_fret`
-    /// pour accepter `'intrant'` et rejeter toujours les valeurs inconnues.
+    /// Vérifie que la migration v5 remplace `'intrant'` par les quatre valeurs
+    /// distinctes et rejette toujours les valeurs inconnues.
     #[test]
-    fn migration_v4_ajoute_intrant() {
+    fn migration_v5_ajoute_intrant_sous_types() {
         let conn = Connection::open_in_memory().expect("base en mémoire");
         run_migrations(&conn).expect("migration");
 
         let version: i64 = conn
             .query_row("PRAGMA user_version", [], |row| row.get(0))
             .unwrap();
-        assert_eq!(version, 4, "la base doit être en version 4 après migration_v4");
+        assert_eq!(version, 5, "la base doit être en version 5 après migration_v5");
 
-        // Prépare une saison pour les INSERT.
         conn.execute(
             "INSERT INTO saisons (libelle, date_debut) VALUES ('2026-2027', '2026-01-01')",
             [],
@@ -572,20 +681,24 @@ mod tests {
         .expect("saison insérée");
         let saison_id = conn.last_insert_rowid();
 
-        // Un tarif avec type_fret='intrant' doit être accepté.
-        let ok = conn.execute(
-            "INSERT INTO tarifs (saison_id, type_fret, distance_min, distance_max, unite_tarif, tarif)
-             VALUES (?1, 'intrant', 0, NULL, 'fcfa_tkm', 95.0)",
-            rusqlite::params![saison_id],
-        );
-        assert!(ok.is_ok(), "type_fret='intrant' doit être accepté dans tarifs");
+        // Les quatre variantes intrant doivent être acceptées.
+        for tf in &["intrant_direct", "intrant_retour", "intrant_evacuation", "intrant_transfert"] {
+            let ok = conn.execute(
+                "INSERT INTO tarifs (saison_id, type_fret, distance_min, distance_max, unite_tarif, tarif)
+                 VALUES (?1, ?2, 0, NULL, 'fcfa_tkm', 95.0)",
+                rusqlite::params![saison_id, tf],
+            );
+            assert!(ok.is_ok(), "type_fret='{}' doit être accepté dans tarifs", tf);
+        }
 
-        // Un tarif avec type_fret='invalide' doit être rejeté par le CHECK.
-        let err = conn.execute(
-            "INSERT INTO tarifs (saison_id, type_fret, distance_min, distance_max, unite_tarif, tarif)
-             VALUES (?1, 'invalide', 0, NULL, 'fcfa_tkm', 95.0)",
-            rusqlite::params![saison_id],
-        );
-        assert!(err.is_err(), "type_fret='invalide' doit être rejeté dans tarifs");
+        // La valeur générique 'intrant' et une valeur inconnue doivent être rejetées.
+        for tf in &["intrant", "invalide"] {
+            let err = conn.execute(
+                "INSERT INTO tarifs (saison_id, type_fret, distance_min, distance_max, unite_tarif, tarif)
+                 VALUES (?1, ?2, 0, NULL, 'fcfa_tkm', 95.0)",
+                rusqlite::params![saison_id, tf],
+            );
+            assert!(err.is_err(), "type_fret='{}' doit être rejeté dans tarifs", tf);
+        }
     }
 }
