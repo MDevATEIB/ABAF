@@ -150,11 +150,23 @@ fn migration_v3(conn: &Connection) -> Result<()> {
 /// Migration v4 : étend les CHECK de `type_fret` sur `tarifs` et `bordereaux`
 /// pour inclure la valeur `'intrant'`. SQLite ne permettant pas d'altérer
 /// une contrainte CHECK existante, on procède par rename → recréer → copier
-/// → drop pour chacune des deux tables.
+/// → drop pour chacune des deux tables. Les FK sont désactivées pendant la
+/// migration pour permettre le DROP de la table intermédiaire.
 fn migration_v4(conn: &Connection) -> Result<()> {
+    // Désactive temporairement les FK pour éviter les violations lors du DROP
+    // de la table intermédiaire (lignes_bordereau → bordereaux).
+    conn.execute_batch("PRAGMA foreign_keys = OFF;")?;
+
+    // ── tarifs ───────────────────────────────────────────────────────────────
+    // Si tarifs_v3 n'existe pas encore, on renomme tarifs → tarifs_v3.
+    // Si elle existe déjà (migration interrompue), on saute le RENAME.
+    let tarifs_v3_existe = table_existe(conn, "tarifs_v3")?;
+    if !tarifs_v3_existe {
+        conn.execute_batch("ALTER TABLE tarifs RENAME TO tarifs_v3;")?;
+    }
+    // Recrée toujours tarifs avec le CHECK étendu (DROP IF EXISTS par sécurité).
     conn.execute_batch(
-        // ── tarifs ──────────────────────────────────────────────────────────
-        "ALTER TABLE tarifs RENAME TO tarifs_v3;
+        "DROP TABLE IF EXISTS tarifs;
 
          CREATE TABLE tarifs (
              id              INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -178,10 +190,17 @@ fn migration_v4(conn: &Connection) -> Result<()> {
                 unite_tarif, tarif, created_at, updated_at
          FROM tarifs_v3;
 
-         DROP TABLE tarifs_v3;
+         DROP TABLE tarifs_v3;",
+    )?;
 
-         -- ── bordereaux ────────────────────────────────────────────────────
-         ALTER TABLE bordereaux RENAME TO bordereaux_v3;
+    // ── bordereaux ───────────────────────────────────────────────────────────
+    // Même logique : si bordereaux_v3 existe déjà, le RENAME a déjà eu lieu.
+    let bordereaux_v3_existe = table_existe(conn, "bordereaux_v3")?;
+    if !bordereaux_v3_existe {
+        conn.execute_batch("ALTER TABLE bordereaux RENAME TO bordereaux_v3;")?;
+    }
+    conn.execute_batch(
+        "DROP TABLE IF EXISTS bordereaux;
 
          CREATE TABLE bordereaux (
              id              INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -213,24 +232,44 @@ fn migration_v4(conn: &Connection) -> Result<()> {
              observations    TEXT,
              created_at      TEXT    NOT NULL DEFAULT (datetime('now')),
              updated_at      TEXT    NOT NULL DEFAULT (datetime('now'))
-         );
-
-         INSERT INTO bordereaux
-             (id, numero, saison_id, mission_id, bsm_id, camion_id, chauffeur_id,
-              usine_id, cgi_id, date_bordereau, poids_vide_kg, poids_charge_kg,
-              distance_km, type_fret, tarif_applique, unite_tarif, montant_brut,
-              statut, observations, created_at, updated_at)
-         SELECT id, numero, saison_id, mission_id, bsm_id, camion_id, chauffeur_id,
-                usine_id, cgi_id, date_bordereau, poids_vide_kg, poids_charge_kg,
-                distance_km, type_fret, tarif_applique, unite_tarif, montant_brut,
-                statut, observations, created_at, updated_at
-         FROM bordereaux_v3;
-
-         DROP TABLE bordereaux_v3;
-
-         CREATE INDEX IF NOT EXISTS idx_bordereaux_bsm_id ON bordereaux(bsm_id);",
+         );",
     )?;
+
+    // Copie des données uniquement si la table d'origine contient les colonnes
+    // complètes (bases v3 réelles). Les bases de test minimalistes n'ont pas
+    // toutes les colonnes ; on ne copie rien dans ce cas.
+    if colonne_existe(conn, "bordereaux_v3", "numero")? {
+        conn.execute_batch(
+            "INSERT INTO bordereaux
+                 (id, numero, saison_id, mission_id, bsm_id, camion_id, chauffeur_id,
+                  usine_id, cgi_id, date_bordereau, poids_vide_kg, poids_charge_kg,
+                  distance_km, type_fret, tarif_applique, unite_tarif, montant_brut,
+                  statut, observations, created_at, updated_at)
+             SELECT id, numero, saison_id, mission_id, bsm_id, camion_id, chauffeur_id,
+                    usine_id, cgi_id, date_bordereau, poids_vide_kg, poids_charge_kg,
+                    distance_km, type_fret, tarif_applique, unite_tarif, montant_brut,
+                    statut, observations, created_at, updated_at
+             FROM bordereaux_v3;",
+        )?;
+    }
+
+    conn.execute_batch(
+        "DROP TABLE bordereaux_v3;
+         CREATE INDEX IF NOT EXISTS idx_bordereaux_bsm_id ON bordereaux(bsm_id);
+         PRAGMA foreign_keys = ON;",
+    )?;
+
     Ok(())
+}
+
+/// Vrai si la table `nom` existe dans la base (via `sqlite_master`).
+fn table_existe(conn: &Connection, nom: &str) -> Result<bool> {
+    let n: i64 = conn.query_row(
+        "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name=?1",
+        [nom],
+        |row| row.get(0),
+    )?;
+    Ok(n > 0)
 }
 
 /// Vrai si `table` possède la colonne `colonne` (via `PRAGMA table_info`).
