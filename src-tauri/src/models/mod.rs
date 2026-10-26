@@ -18,3 +18,8 @@ pub mod avance;
 pub mod rapport;
 pub mod dashboard;
 pub mod parametre;
+pub mod depense;
+pub mod intervenant;
+pub mod piece;
+pub mod exploitation;
+pub mod sync;

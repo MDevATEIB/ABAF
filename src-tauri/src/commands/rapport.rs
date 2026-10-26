@@ -1,5 +1,7 @@
 ﻿// Commandes Tauri - module rapport (Phase 5)
 use crate::db::AppState;
+use crate::models::depense::libelle_categorie;
+use crate::models::exploitation::CategorieCharge;
 use crate::models::rapport::{
     BsmRapport, ComparaisonCampagne, FactureReleve, LigneRapport, PaiementRapport, RapportAnnuel,
     Recapitulatif, TotauxRapport,
@@ -65,12 +67,16 @@ pub fn generer_rapport_annuel(
         bsms: construire_bsms(&db, saison.id)?,
         paiements: construire_paiements(&db, saison.id)?,
         comparaison: construire_comparaison(&db)?,
+        charges_par_categorie: crate::services::exploitation::repartition_par_categorie(
+            &db, saison.id,
+        )?,
     })
 }
 
 /// Exporte le rapport annuel d'une campagne dans un classeur Excel (.xlsx) :
 /// feuille « Opérations » (colonnes §7.2 + totaux), feuille « Gasoil & BSM »,
-/// feuille « Règlements » et feuille « Comparaison ».
+/// feuille « Règlements », feuille « Comparaison » et feuille « Exploitation »
+/// (charges du terrain et marge).
 /// Le fichier est écrit dans le dossier fourni ou, par défaut, dans
 /// « Documents/ABAF ». Retourne le chemin complet du fichier généré.
 #[tauri::command]
@@ -86,6 +92,7 @@ pub fn exporter_rapport_excel(
     let bsms = construire_bsms(&db, saison.id)?;
     let paiements = construire_paiements(&db, saison.id)?;
     let comparaison = construire_comparaison(&db)?;
+    let charges = crate::services::exploitation::repartition_par_categorie(&db, saison.id)?;
     drop(db);
 
     let repertoire = match dossier.as_deref().map(str::trim) {
@@ -102,9 +109,16 @@ pub fn exporter_rapport_excel(
     );
     let chemin = repertoire.join(nom_fichier);
 
-    let mut classeur =
-        construire_classeur(&saison, &lignes, &totaux, &bsms, &paiements, &comparaison)
-            .map_err(|e| format!("Erreur de génération du classeur Excel : {e}"))?;
+    let mut classeur = construire_classeur(
+        &saison,
+        &lignes,
+        &totaux,
+        &bsms,
+        &paiements,
+        &comparaison,
+        &charges,
+    )
+    .map_err(|e| format!("Erreur de génération du classeur Excel : {e}"))?;
     classeur
         .save(&chemin)
         .map_err(|e| format!("Impossible d'enregistrer le fichier Excel : {e}"))?;
@@ -301,7 +315,12 @@ pub(crate) fn construire_totaux(db: &Connection, saison_id: i64) -> Result<Totau
                  FROM paiements p JOIN factures f ON f.id = p.facture_id
                  WHERE f.saison_id = ?1 AND p.statut = 'paye'),
                 (SELECT COALESCE(SUM(montant_initial), 0) FROM avances WHERE saison_id = ?1),
-                (SELECT COALESCE(SUM(montant_utilise), 0) FROM avances WHERE saison_id = ?1)",
+                (SELECT COALESCE(SUM(montant_utilise), 0) FROM avances WHERE saison_id = ?1),
+                (SELECT COALESCE(SUM(montant), 0) FROM depenses
+                  WHERE saison_id = ?1 AND statut = 'validee'),
+                (SELECT COUNT(*) FROM depenses WHERE saison_id = ?1 AND statut = 'validee'),
+                (SELECT COALESCE(SUM(montant), 0) FROM depenses
+                  WHERE saison_id = ?1 AND statut = 'brouillon')",
             rusqlite::params![saison_id],
             |row| {
                 Ok(TotauxRapport {
@@ -323,6 +342,10 @@ pub(crate) fn construire_totaux(db: &Connection, saison_id: i64) -> Result<Totau
                     avances_utilisees: row.get(15)?,
                     montant_impaye: 0.0,
                     solde_avances: 0.0,
+                    total_depenses: row.get(16)?,
+                    depenses_validees: row.get(17)?,
+                    depenses_en_attente: row.get(18)?,
+                    marge_nette: 0.0,
                 })
             },
         )
@@ -331,6 +354,9 @@ pub(crate) fn construire_totaux(db: &Connection, saison_id: i64) -> Result<Totau
     // Valeurs dérivées (AGENT.md §21.1)
     totaux.montant_impaye = (totaux.montant_net - totaux.montant_paye).max(0.0);
     totaux.solde_avances = totaux.avances_initiales - totaux.avances_utilisees;
+    // Marge d'exploitation : seules les charges validées sortent du chiffre
+    // d'affaires, les brouillons du terrain restent affichés à part.
+    totaux.marge_nette = totaux.montant_net - totaux.total_depenses;
     Ok(totaux)
 }
 
@@ -467,6 +493,38 @@ pub fn sauvegarder_rapport_pdf(
     Ok(chemin.to_string_lossy().to_string())
 }
 
+/// Écrit sur disque le PDF de l'état d'exploitation généré dans l'interface
+/// (module Exploitation) ; même parcours que le rapport annuel, nom distinct.
+#[tauri::command]
+pub fn sauvegarder_exploitation_pdf(
+    dossier: Option<String>,
+    libelle_campagne: String,
+    contenu: Vec<u8>,
+) -> Result<String, String> {
+    if contenu.is_empty() {
+        return Err("Le contenu du PDF est vide.".into());
+    }
+
+    let repertoire = match dossier.as_deref().map(str::trim) {
+        Some(dossier_choisi) if !dossier_choisi.is_empty() => PathBuf::from(dossier_choisi),
+        _ => dossier_documents()?.join("ABAF"),
+    };
+    std::fs::create_dir_all(&repertoire)
+        .map_err(|e| format!("Impossible de créer le dossier d'export : {e}"))?;
+
+    let nom_fichier = format!(
+        "Etat_exploitation_{}_{}.pdf",
+        nettoyer_nom_fichier(&libelle_campagne),
+        chrono::Local::now().format("%Y%m%d_%H%M")
+    );
+    let chemin = repertoire.join(nom_fichier);
+
+    std::fs::write(&chemin, &contenu)
+        .map_err(|e| format!("Impossible d'enregistrer le fichier PDF : {e}"))?;
+
+    Ok(chemin.to_string_lossy().to_string())
+}
+
 // ─── Export Excel — aide interne ─────────────────────────────────────────────
 
 /// Styles partagés par les feuilles du classeur.
@@ -508,7 +566,7 @@ impl StylesExcel {
     }
 }
 
-/// Construit le classeur complet du rapport annuel (quatre feuilles).
+/// Construit le classeur complet du rapport annuel (cinq feuilles).
 fn construire_classeur(
     saison: &SaisonResume,
     lignes: &[LigneRapport],
@@ -516,6 +574,7 @@ fn construire_classeur(
     bsms: &[BsmRapport],
     paiements: &[PaiementRapport],
     comparaison: &[ComparaisonCampagne],
+    charges: &[CategorieCharge],
 ) -> Result<Workbook, XlsxError> {
     let mut classeur = Workbook::new();
     let styles = StylesExcel::creer();
@@ -810,6 +869,69 @@ fn construire_classeur(
     }
     let largeurs_comparaison: [f64; 6] = [24.0, 12.0, 18.0, 13.0, 11.0, 17.0];
     for (colonne, largeur) in largeurs_comparaison.iter().enumerate() {
+        feuille.set_column_width(colonne as u16, *largeur)?;
+    }
+
+    // ── Feuille « Exploitation » : charges du terrain et marge ──
+    let feuille = classeur.add_worksheet();
+    feuille.set_name("Exploitation")?;
+    feuille.merge_range(
+        0,
+        0,
+        0,
+        3,
+        format!("Synthèse exploitation — {}", saison.libelle).as_str(),
+        &styles.titre,
+    )?;
+
+    let taux_marge = if totaux.montant_net > 0.0 {
+        totaux.marge_nette / totaux.montant_net * 100.0
+    } else {
+        0.0
+    };
+    // (libellé, valeur, montant en entier ?)
+    let indicateurs: [(&str, f64, bool); 5] = [
+        ("Chiffre d'affaires facturé (FCFA)", totaux.montant_net, true),
+        ("Charges validées (FCFA)", totaux.total_depenses, true),
+        (
+            "Charges en attente de validation (FCFA)",
+            totaux.depenses_en_attente,
+            true,
+        ),
+        ("Marge nette (FCFA)", totaux.marge_nette, true),
+        ("Taux de marge (%)", taux_marge, false),
+    ];
+    for (index, (libelle, valeur, entier)) in indicateurs.iter().enumerate() {
+        let ligne = 2 + index as u32;
+        feuille.write_string_with_format(ligne, 0, *libelle, &styles.texte)?;
+        let style = if *entier { &styles.total } else { &styles.nombre_dec };
+        feuille.write_number_with_format(ligne, 1, *valeur, style)?;
+    }
+
+    feuille.write_string_with_format(8, 0, "Charges validées par catégorie", &styles.sous_titre)?;
+    const COLONNES_EXPLOITATION: [&str; 4] =
+        ["Catégorie", "Montant (FCFA)", "Lignes", "Part (%)"];
+    for (colonne, libelle) in COLONNES_EXPLOITATION.iter().enumerate() {
+        feuille.write_string_with_format(9, colonne as u16, *libelle, &styles.entete)?;
+    }
+    for (index, charge) in charges.iter().enumerate() {
+        let ligne = 10 + index as u32;
+        feuille.write_string_with_format(ligne, 0, libelle_categorie(&charge.categorie), &styles.texte)?;
+        feuille.write_number_with_format(ligne, 1, charge.montant, &styles.nombre)?;
+        feuille.write_number_with_format(ligne, 2, charge.nb_lignes as f64, &styles.nombre)?;
+        feuille.write_number_with_format(ligne, 3, charge.part, &styles.nombre_dec)?;
+    }
+    let total_ligne = 10 + charges.len() as u32;
+    feuille.write_string_with_format(total_ligne, 0, "Total", &styles.total)?;
+    feuille.write_number_with_format(total_ligne, 1, totaux.total_depenses, &styles.total)?;
+    feuille.write_number_with_format(
+        total_ligne,
+        2,
+        totaux.depenses_validees as f64,
+        &styles.total,
+    )?;
+    let largeurs_exploitation: [f64; 4] = [34.0, 17.0, 9.0, 10.0];
+    for (colonne, largeur) in largeurs_exploitation.iter().enumerate() {
         feuille.set_column_width(colonne as u16, *largeur)?;
     }
 

@@ -22,6 +22,7 @@ pub struct Bordereau {
     pub montant_brut: Option<f64>,
     pub statut: String,
     pub observations: Option<String>,
+    pub numero_cotontchad: Option<String>,
     pub created_at: String,
     pub updated_at: String,
 }
@@ -71,6 +72,8 @@ pub struct CreerBordereauPayload {
     /// tarifaire appliquée à la validation.
     pub type_fret: Option<String>,
     pub observations: Option<String>,
+    #[serde(default)]
+    pub numero_cotontchad: Option<String>,
     pub lignes: Vec<LigneBordereauPayload>,
     /// — Section Gasoil (BSM) optionnelle —
     /// Si `quantite_litres_gasoil` > 0, un BSM est auto-généré à la validation.
@@ -100,6 +103,8 @@ pub struct ModifierBordereauPayload {
     pub distance_km: Option<f64>,
     pub type_fret: Option<String>,
     pub observations: Option<String>,
+    #[serde(default)]
+    pub numero_cotontchad: Option<String>,
     pub lignes: Vec<LigneBordereauPayload>,
     /// — Section Gasoil (BSM) optionnelle —
     #[serde(default)]

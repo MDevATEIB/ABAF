@@ -67,7 +67,10 @@ export function BordereauDocument({
         <div />
         <div className="text-right">
           <p className="text-sm font-bold uppercase">Bordereau de transport et de livraison</p>
-          <p className="mt-1 font-semibold">{formatNumeroBordereau(bordereau, usineNom)}</p>
+          <p className="mt-1 font-semibold">Réf. ABAF : {formatNumeroBordereau(bordereau, usineNom)}</p>
+          {bordereau.numero_cotontchad && (
+            <p className="text-[11px] font-medium">Réf. Cotontchad : {bordereau.numero_cotontchad}</p>
+          )}
           <p className="text-[11px] text-neutral-600">Date : {formatDate(bordereau.date_bordereau)}</p>
           <p className="mt-1.5 inline-block border-2 border-black px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide">
             Original payable
@@ -139,20 +142,26 @@ export function BordereauDocument({
       {/* ── Informations de chargement ── */}
       <div className="mt-4 grid grid-cols-4 gap-3">
         <CarteChargement
-          label="Poids à vide"
+          label="Poids à vide (tare)"
           valeur={bordereau.poids_vide_kg != null ? formatKg(bordereau.poids_vide_kg) : '—'}
         />
         <CarteChargement
-          label="Poids chargé"
+          label="Poids chargé (tare + marchandise)"
           valeur={bordereau.poids_charge_kg != null ? formatKg(bordereau.poids_charge_kg) : '—'}
         />
         <CarteChargement
-          label="Poids net coton"
-          valeur={bordereau.poids_net_kg != null ? formatKg(bordereau.poids_net_kg) : '—'}
+          label={bordereau.type_fret?.startsWith('intrant') ? 'Poids net intrant' : 'Poids net coton'}
+          valeur={
+            bordereau.poids_net_kg != null
+              ? formatKg(bordereau.poids_net_kg)
+              : totalPoids > 0
+              ? formatKg(totalPoids)
+              : '—'
+          }
         />
         <CarteChargement
           label="Distance"
-          valeur={bordereau.distance_km != null ? formatDistance(bordereau.distance_km) : '—'}
+          valeur={bordereau.distance_km != null ? formatDistance(bordereau.distance_km) : totalKm > 0 ? formatDistance(totalKm) : '—'}
         />
       </div>
 
@@ -173,7 +182,7 @@ export function BordereauDocument({
 
       {/* ── Pied de page ── */}
       <p className="mt-auto pt-8 text-center text-[9px] text-neutral-400">
-        Bordereau {bordereau.numero} · Campagne {saisonLibelle ?? '—'} · Document généré par ABAF
+        Réf. ABAF : {bordereau.numero}{bordereau.numero_cotontchad ? ` · Réf. Cotontchad : ${bordereau.numero_cotontchad}` : ''} · Campagne {saisonLibelle ?? '—'} · Document généré par ABAF
       </p>
     </div>
   );

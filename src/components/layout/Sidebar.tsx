@@ -12,6 +12,7 @@ import {
   Layers,
   ChevronDown,
   ChevronUp,
+  Wrench,
 } from 'lucide-react';
 
 // ─── Définition de la navigation ─────────────────────────────────────────────
@@ -65,6 +66,16 @@ const navItems: NavItem[] = [
     ],
   },
   {
+    label: 'Exploitation',
+    icon: <Wrench size={17} />,
+    href: '/exploitation',
+    children: [
+      { label: 'Dépenses de terrain',  href: '/exploitation/depenses' },
+      { label: 'Intervenants & pièces', href: '/exploitation/intervenants' },
+      { label: 'Rentabilité',          href: '/exploitation/rentabilite' },
+    ],
+  },
+  {
     label: 'Rapports',
     icon: <BarChart2 size={17} />,
     href: '/rapports',
@@ -73,6 +84,7 @@ const navItems: NavItem[] = [
       { label: 'Rapport Annuel', href: '/rapports/annuel' },
       { label: 'Export Excel',   href: '/rapports/export-excel' },
       { label: 'Export PDF',     href: '/rapports/export-pdf' },
+      { label: "État d'exploitation", href: '/rapports/exploitation' },
     ],
   },
   {

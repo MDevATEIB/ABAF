@@ -30,7 +30,15 @@ export type StatutFacture = 'brouillon' | 'validee' | 'payee';
 export type StatutPaiement = 'paye' | 'impaye' | 'np';
 
 /** Types de fret du contrat 2026-2027 (CDC v1.1). */
-export type TypeFret = 'direct' | 'retour' | 'evacuation' | 'transfert' | 'intrant';
+export type TypeFret =
+  | 'direct'
+  | 'retour'
+  | 'evacuation'
+  | 'transfert'
+  | 'intrant_direct'
+  | 'intrant_retour'
+  | 'intrant_evacuation'
+  | 'intrant_transfert';
 
 /** Unités de tarification : FCFA/tonne (≤ 90 km) et FCFA/TKM (au-delà). */
 export type UniteTarif = 'fcfa_tonne' | 'fcfa_tkm';
@@ -192,6 +200,7 @@ export interface Bordereau {
   montant_brut?: number;
   statut: StatutBordereau;
   observations?: string;
+  numero_cotontchad?: string;
   created_at: string;
   updated_at: string;
 }
@@ -354,6 +363,15 @@ export interface TotauxRapport {
   avances_initiales: number;
   avances_utilisees: number;
   solde_avances: number;
+  // ── Synthèse exploitation (module Exploitation, hors CDC v1.1) ──────────
+  /** Montant des charges d'exploitation validées de la campagne. */
+  total_depenses: number;
+  /** Nombre de dépenses validées. */
+  depenses_validees: number;
+  /** Montant des dépenses encore en brouillon (terrain non audité). */
+  depenses_en_attente: number;
+  /** `montant_net − total_depenses` : marge réelle du parc. */
+  marge_nette: number;
 }
 
 /** Facture et montant net réellement enregistré, affichés sur le relevé. */
@@ -448,6 +466,270 @@ export interface Parametres {
   entreprise_email: string;
   /** Sauvegarde automatique de la base au démarrage de l'application. */
   sauvegarde_auto: boolean;
+}
+
+// ─── Exploitation (Phase 7) ──────────────────────────────────────────────────
+
+/**
+ * Nomenclature des catégories de charges d'exploitation — miroir de
+ * `models/depense.rs` côté Rust : les deux listes doivent évoluer ensemble.
+ */
+export const CATEGORIES_DEPENSE = [
+  'gasoil_hors_bsm',
+  'piece_rechange',
+  'main_oeuvre',
+  'depannage',
+  'pneu',
+  'huile_entretien',
+  'chef_parc',
+  'perdiem',
+  'peage',
+  'stationnement',
+  'amende',
+  'autre',
+] as const;
+export type CategorieDepense = (typeof CATEGORIES_DEPENSE)[number];
+
+/** Libellés français des catégories (miroir de `libelle_categorie`). */
+export const LIBELLES_CATEGORIE_DEPENSE: Record<CategorieDepense, string> = {
+  gasoil_hors_bsm: 'Gasoil hors BSM',
+  piece_rechange: 'Pièce de rechange',
+  main_oeuvre: "Main d'œuvre mécanicien",
+  depannage: 'Dépannage',
+  pneu: 'Pneu',
+  huile_entretien: 'Huile & entretien',
+  chef_parc: 'Indemnité chef de parc',
+  perdiem: 'Perdiem',
+  peage: 'Péage',
+  stationnement: 'Stationnement',
+  amende: 'Amende',
+  autre: 'Autre charge',
+};
+
+/** Libellé d'une catégorie, en tolérant une valeur hors nomenclature. */
+export function libelleCategorieDepense(categorie: string): string {
+  return LIBELLES_CATEGORIE_DEPENSE[categorie as CategorieDepense] ?? categorie;
+}
+
+/** `brouillon` | `validee` | `rejete` (miroir de `STATUTS_DEPENSE`). */
+export type StatutDepense = 'brouillon' | 'validee' | 'rejete';
+
+/** Origine de la saisie : poste de gestion ou téléphone de terrain. */
+export type SourceDepense = 'desktop' | 'mobile';
+
+/** Dépense d'exploitation saisie au bureau ou sur le terrain. */
+export interface Depense {
+  id: number;
+  uuid: string;
+  saison_id: number;
+  camion_id?: number | null;
+  mission_id?: number | null;
+  chauffeur_id?: number | null;
+  apprenti_id?: number | null;
+  mecanicien_id?: number | null;
+  piece_id?: number | null;
+  categorie: string;
+  designation: string;
+  quantite?: number | null;
+  unite?: string | null;
+  montant: number;
+  date_depense: string;
+  lieu?: string | null;
+  observations?: string | null;
+  /** Nom du fichier du justificatif, la photo elle-même vit sur disque. */
+  photo?: string | null;
+  statut: string;
+  motif_rejet?: string | null;
+  source: string;
+  device_id?: string | null;
+  created_at: string;
+  updated_at: string;
+  synced_at?: string | null;
+  // Libellés joints calculés à la lecture par le poste.
+  camion?: string | null;
+  mission?: string | null;
+  chauffeur?: string | null;
+  apprenti?: string | null;
+  mecanicien?: string | null;
+  piece?: string | null;
+  /** Nom de l'appareil de terrain qui a saisi la ligne. */
+  appareil?: string | null;
+}
+
+/** Champs communs à la création et à la modification d'une dépense. */
+export interface DepenseFields {
+  categorie: CategorieDepense;
+  designation: string;
+  quantite?: number | null;
+  unite?: string | null;
+  montant: number;
+  date_depense: string;
+  lieu?: string | null;
+  observations?: string | null;
+  camion_id?: number | null;
+  mission_id?: number | null;
+  chauffeur_id?: number | null;
+  apprenti_id?: number | null;
+  mecanicien_id?: number | null;
+  piece_id?: number | null;
+}
+
+/** Filtres de la grille de dépenses : absent = pas de filtre. */
+export interface FiltresDepenses {
+  saison_id?: number | null;
+  camion_id?: number | null;
+  categorie?: string | null;
+  statut?: string | null;
+  source?: string | null;
+  device_id?: string | null;
+  date_debut?: string | null;
+  date_fin?: string | null;
+  recherche?: string | null;
+}
+
+/** Total par catégorie (répartition de la grille). */
+export interface TotalParCategorie {
+  categorie: string;
+  montant: number;
+  nb_lignes: number;
+}
+
+/** Synthèse d'une campagne pour les cartes du tableau de bord. */
+export interface SyntheseExploitation {
+  charges_valides: number;
+  charges_en_attente: number;
+  nb_charges: number;
+  nb_charges_attente: number;
+  nb_charges_rejetees: number;
+}
+
+/** Justificatif photo d'une dépense, remonté en data URL pour l'aperçu. */
+export interface JustificatifDepense {
+  nom: string;
+  chemin: string;
+  data_url: string;
+}
+
+/** Nomenclature des rôles d'intervenants du parc (miroir de `ROLES_INTERVENANT`). */
+export const ROLES_INTERVENANT = ['mecanicien', 'chef_parc', 'apprenti'] as const;
+export type RoleIntervenant = (typeof ROLES_INTERVENANT)[number];
+
+export const LIBELLES_ROLE_INTERVENANT: Record<RoleIntervenant, string> = {
+  mecanicien: 'Mécanicien',
+  chef_parc: 'Chef de parc',
+  apprenti: 'Apprenti',
+};
+
+/** Intervenant du parc : mécanicien, chef de parc ou apprenti. */
+export interface Intervenant {
+  id: number;
+  uuid: string;
+  nom: string;
+  prenom?: string | null;
+  telephone?: string | null;
+  role: string;
+  actif: number;
+  source: string;
+  device_id?: string | null;
+  created_at: string;
+  updated_at: string;
+  appareil?: string | null;
+  nb_depenses: number;
+}
+
+/** Pièce du catalogue des pièces de rechange. */
+export interface PieceRechange {
+  id: number;
+  uuid: string;
+  nom: string;
+  categorie?: string | null;
+  unite: string;
+  actif: number;
+  source: string;
+  device_id?: string | null;
+  created_at: string;
+  updated_at: string;
+  appareil?: string | null;
+  nb_depenses: number;
+}
+
+/** Ligne de rentabilité d'un camion pour une campagne. */
+export interface LigneMarge {
+  camion_id: number;
+  uuid: string;
+  immatriculation: string;
+  marque?: string | null;
+  modele?: string | null;
+  actif: number;
+  chiffre_affaires: number;
+  charges: number;
+  marge: number;
+  taux_marge: number;
+  nb_missions: number;
+  charges_en_attente: number;
+  nb_charges: number;
+}
+
+/** Total des charges validées d'une catégorie, avec sa part en pourcentage. */
+export interface CategorieCharge {
+  categorie: string;
+  montant: number;
+  nb_lignes: number;
+  part: number;
+}
+
+/** État d'exploitation complet d'une campagne (écran Rentabilité + export). */
+export interface RapportExploitation {
+  saison_id: number;
+  saison_libelle: string;
+  lignes: LigneMarge[];
+  total_chiffre_affaires: number;
+  total_charges: number;
+  total_marge: number;
+  par_categorie: CategorieCharge[];
+  camions_sans_activite: number;
+}
+
+// ─── Synchronisation mobile (Phase 7) ────────────────────────────────────────
+
+/** Téléphone de terrain appairé avec le poste de gestion. */
+export interface Appareil {
+  uuid: string;
+  nom: string;
+  agent: string;
+  /** `actif` | `revoque`. */
+  statut: string;
+  created_at: string;
+  last_seen_at?: string | null;
+  nb_lignes_sync: number;
+  last_pull_lvn: number;
+  nb_changes_en_attente: number;
+  nb_depenses_a_valider: number;
+}
+
+/** État du serveur de synchronisation, affiché dans Paramètres. */
+export interface EtatSync {
+  actif: boolean;
+  port: number;
+  port_decouverte: number;
+  /** Adresses IPv4 du poste à communiquer au terrain. */
+  adresses: string[];
+  nb_appareils_actifs: number;
+  nb_appareils_revoques: number;
+  nb_depenses_a_valider: number;
+  dernier_lvn: number;
+  appairage_en_cours: boolean;
+  appairage_expire_a?: string | null;
+  dossier_justificatifs: string;
+  nb_justificatifs: number;
+  taille_justificatifs_octets: number;
+}
+
+/** Code d'appairage à six chiffres généré pour un téléphone. */
+export interface CodeAppairage {
+  code: string;
+  expire_a: string;
+  duree_secondes: number;
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────

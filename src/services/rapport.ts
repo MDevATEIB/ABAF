@@ -47,3 +47,20 @@ export async function sauvegarderRapportPdf(
     contenu,
   });
 }
+
+/**
+ * Écrit sur disque le PDF de l'état d'exploitation généré dans l'interface
+ * (module Exploitation). Sans dossier précisé, le fichier est créé dans
+ * « Documents/ABAF ». Retourne le chemin complet du fichier généré.
+ */
+export async function sauvegarderExploitationPdf(
+  libelleCampagne: string,
+  contenu: number[],
+  dossier?: string,
+): Promise<string> {
+  return invoke<string>('sauvegarder_exploitation_pdf', {
+    dossier: dossier ?? null,
+    libelleCampagne,
+    contenu,
+  });
+}

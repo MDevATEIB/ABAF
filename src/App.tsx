@@ -25,6 +25,12 @@ import RecapitulatifPage from '@/pages/rapports/recap';
 import RapportAnnuelPage from '@/pages/rapports/annuel';
 import ExportExcelPage from '@/pages/rapports/export-excel';
 import ExportPdfPage from '@/pages/rapports/export-pdf';
+import RapportExploitationPage from '@/pages/rapports/exploitation';
+
+// ── Pages exploitation (Phase 7) ──────────────────────────────────────────────
+import DepensesPage from '@/pages/exploitation/depenses';
+import IntervenantsPage from '@/pages/exploitation/intervenants';
+import RentabilitePage from '@/pages/exploitation/rentabilite';
 
 // ── Pages impression ──────────────────────────────────────────────────────────
 import ImpressionBsmPage from '@/pages/impression/bsm';
@@ -72,12 +78,19 @@ function App() {
           <Route path="/finance/paiements" element={<PaiementsPage />} />
           <Route path="/finance/avances"   element={<AvancesPage />} />
 
+          {/* ── Exploitation (charges de terrain, phase 7) ─────────────── */}
+          <Route path="/exploitation" element={<Navigate to="/exploitation/depenses" replace />} />
+          <Route path="/exploitation/depenses"     element={<DepensesPage />} />
+          <Route path="/exploitation/intervenants" element={<IntervenantsPage />} />
+          <Route path="/exploitation/rentabilite"  element={<RentabilitePage />} />
+
           {/* ── Rapports ─────────────────────────────────────────────────── */}
           <Route path="/rapports" element={<Navigate to="/rapports/annuel" replace />} />
           <Route path="/rapports/recap"        element={<RecapitulatifPage />} />
           <Route path="/rapports/annuel"       element={<RapportAnnuelPage />} />
           <Route path="/rapports/export-excel" element={<ExportExcelPage />} />
           <Route path="/rapports/export-pdf"   element={<ExportPdfPage />} />
+          <Route path="/rapports/exploitation" element={<RapportExploitationPage />} />
 
           {/* ── Impression ───────────────────────────────────────────────── */}
           <Route path="/impression/bsm/:id"       element={<ImpressionBsmPage />} />

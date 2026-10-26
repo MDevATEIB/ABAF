@@ -18,13 +18,16 @@ import {
   FileBarChart,
   FileText,
   Fuel,
+  Hourglass,
   MapPin,
   Package,
   Receipt,
   Route,
   Scale,
+  TrendingUp,
   Truck,
   Wallet,
+  Wrench,
 } from 'lucide-react';
 
 import { Select, PageHeader, EmptyState, Spinner, ErrorMessage } from '@/components/ui';
@@ -323,6 +326,31 @@ export default function DashboardPage() {
               label="Solde avances"
               valeur={formatFCFA(data.totaux.solde_avances)}
               icone={<Banknote size={18} />}
+            />
+          </SectionCartes>
+
+          {/* ── Exploitation (charges de terrain, marge du parc) ───────── */}
+          <SectionCartes titre="Exploitation">
+            <CarteKpi
+              label="Charges validées"
+              valeur={formatFCFA(data.totaux.total_depenses)}
+              icone={<Wrench size={18} />}
+            />
+            <CarteKpi
+              label="Charges en attente de validation"
+              valeur={formatFCFA(data.totaux.depenses_en_attente)}
+              icone={<Hourglass size={18} />}
+            />
+            <CarteKpi
+              label="Lignes validées"
+              valeur={formatNombre(data.totaux.depenses_validees)}
+              icone={<Check size={18} />}
+            />
+            <CarteKpi
+              label="Marge nette (net − charges)"
+              valeur={formatFCFA(data.totaux.marge_nette)}
+              icone={<TrendingUp size={18} />}
+              valeurClassName={data.totaux.marge_nette >= 0 ? 'text-green-700' : 'text-destructive'}
             />
           </SectionCartes>
 

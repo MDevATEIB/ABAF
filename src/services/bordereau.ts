@@ -41,6 +41,7 @@ export async function creerBordereau(payload: {
   distance_km?: number;
   type_fret?: TypeFret;
   observations?: string;
+  numero_cotontchad?: string;
   lignes: LigneBordereauInput[];
   /** Section Gasoil (BSM) optionnelle. Si quantite_litres_gasoil > 0,
    *  un BSM est auto-généré côté backend et lié via `bordereaux.bsm_id`. */
@@ -66,6 +67,7 @@ export async function modifierBordereau(
     distance_km?: number;
     type_fret?: TypeFret;
     observations?: string;
+    numero_cotontchad?: string;
     lignes: LigneBordereauInput[];
     /** Section Gasoil (BSM) optionnelle (idem création). */
     quantite_litres_gasoil?: number | null;

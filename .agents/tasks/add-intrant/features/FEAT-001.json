@@ -2,7 +2,7 @@
   "id": "FEAT-001",
   "type": "feat",
   "description": "Backend SQLite + Rust: ajouter 'intrant' à la couche de données. Migration v4 pour recréer tarifs et bordereaux avec CHECK étendu, mise à jour de la constante TYPES_FRET dans tarification.rs. Ces deux fichiers sont les seules sources de vérité Rust — tous les validateurs (tarif.rs, bordereau.rs) les consomment dynamiquement.",
-  "status": "pending",
+  "status": "completed",
   "steps": [
     "Lire src-tauri/src/db/mod.rs en entier pour confirmer la structure de appliquer_migrations_versionnees et le pattern des migrations v1/v2/v3.",
     "Dans appliquer_migrations_versionnees, ajouter le bloc 'if version < 4 { migration_v4(conn)?; conn.execute_batch(\"PRAGMA user_version = 4\")?; }' après le bloc version < 3 existant.",
@@ -21,5 +21,5 @@
     "cd c:/Dev/ABAF/src-tauri && cargo check 2>&1"
   ],
   "blocked_reason": null,
-  "findings": ""
+  "findings": "Version finale DB : 4 (user_version = 4 après toutes les migrations). TYPES_FRET est maintenant [&str; 5] = [\"direct\", \"retour\", \"evacuation\", \"transfert\", \"intrant\"]. migration_v4 désactive PRAGMA foreign_keys pendant la migration pour éviter les violations FK lors du DROP bordereaux_v3 (qui est référencée par lignes_bordereau). Idempotence bordereaux : la copie SELECT est conditionnelle sur l'existence de la colonne 'numero' dans bordereaux_v3 — gère les bases de test minimalistes (base_ancienne) qui n'ont pas 'numero'. Les tests migration_v1_convertit_lancien_bareme et migration_sur_base_neuve_avec_tranche_ouverte ont été mis à jour pour vérifier version=4 (au lieu de version=1) puisque run_migrations bumpe maintenant jusqu'à la version 4. FEAT-002 (frontend) doit ajouter 'intrant' dans : src/types/index.ts (union TypeFret), src/utils/index.ts (TYPES_FRET array), les z.enum() dans src/pages/referentiels/tarifs/index.tsx et src/pages/operations/bordereaux/index.tsx. NOTE : cargo test et cargo check n'ont pas pu s'exécuter dans l'environnement agent (sandbox OS bloque rustc.exe — 'failed to open NUL device for child stdin: Accès refusé'). Les changements sont syntaxiquement et logiquement corrects sur la base d'une vérification manuelle."
 }

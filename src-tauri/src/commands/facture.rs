@@ -81,7 +81,7 @@ pub fn get_operations_disponibles(
                         b.usine_id, b.cgi_id, b.date_bordereau, b.poids_vide_kg, b.poids_charge_kg,
                         b.poids_net_kg, b.distance_km, b.type_fret, b.tarif_applique,
                         b.unite_tarif, b.montant_brut, b.statut, b.observations,
-                        b.created_at, b.updated_at
+                        b.numero_cotontchad, b.created_at, b.updated_at
                  FROM bordereaux b
                  WHERE b.saison_id = ?1
                    AND b.statut = 'valide'
@@ -115,8 +115,9 @@ pub fn get_operations_disponibles(
                     montant_brut: row.get(17)?,
                     statut: row.get(18)?,
                     observations: row.get(19)?,
-                    created_at: row.get(20)?,
-                    updated_at: row.get(21)?,
+                    numero_cotontchad: row.get(20)?,
+                    created_at: row.get(21)?,
+                    updated_at: row.get(22)?,
                 })
             })
             .map_err(|e| e.to_string())?

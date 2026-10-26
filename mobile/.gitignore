@@ -1,0 +1,16 @@
+node_modules/
+.expo/
+dist/
+web-build/
+*.log
+.DS_Store
+
+# Générés par « npx expo prebuild » (workflow géré : app.json = source de vérité)
+/android/
+/ios/
+
+# Secrets de signature APK — ne jamais committer
+*.jks
+*.keystore
+keystore.properties
+local.properties

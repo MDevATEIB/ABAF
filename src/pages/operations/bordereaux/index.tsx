@@ -69,6 +69,7 @@ type FormValues = {
   distance_km?: number;
   type_fret: TypeFret;
   observations?: string;
+  numero_cotontchad?: string;
   lignes: {
     av_id: number;
     localite?: string;
@@ -97,8 +98,9 @@ const schema = z.object({
   cgi_id:         z.coerce.number().optional().transform((v) => (v ? v : undefined)),
   date_bordereau: z.string().min(1, 'La date est requise'),
   distance_km:    z.coerce.number().optional().transform((v) => (v ? v : undefined)),
-  type_fret:      z.enum(['direct', 'retour', 'evacuation', 'transfert', 'intrant']),
+  type_fret:      z.enum(['direct', 'retour', 'evacuation', 'transfert', 'intrant_direct', 'intrant_retour', 'intrant_evacuation', 'intrant_transfert']),
   observations:   z.string().optional(),
+  numero_cotontchad: z.string().optional(),
   lignes:         z.array(ligneSchema).min(1, 'Ajoutez au moins une ligne.'),
   // Section Gasoil
   gasoil_enabled: z.boolean().default(false),
@@ -511,6 +513,13 @@ function BordereauForm({
           hint={isEdit ? undefined : `Laisser vide pour générer automatiquement (${numeroAuto}).`}
           error={errors.numero?.message}
           {...register('numero')}
+        />
+        <Input
+          label="N° bordereau Cotontchad"
+          placeholder="Ex. : 2349"
+          hint="Numéro de référence Cotontchad (optionnel)"
+          error={errors.numero_cotontchad?.message}
+          {...register('numero_cotontchad')}
         />
         <Select
           label="Type de fret"
@@ -1099,6 +1108,7 @@ export default function BordereauxPage() {
         distance_km:    values.distance_km,
         type_fret:      values.type_fret,
         observations:   values.observations || undefined,
+        numero_cotontchad: values.numero_cotontchad?.trim() || undefined,
         quantite_litres_gasoil: gasoil ? values.quantite_litres_gasoil ?? null : null,
         prix_litre_gasoil:     gasoil ? values.prix_litre_gasoil ?? null : null,
         beneficiaire_gasoil:   gasoil ? values.beneficiaire_gasoil ?? null : null,
@@ -1137,6 +1147,7 @@ export default function BordereauxPage() {
           distance_km:    values.distance_km,
           type_fret:      values.type_fret,
           observations:   values.observations || undefined,
+          numero_cotontchad: values.numero_cotontchad?.trim() || undefined,
           quantite_litres_gasoil: gasoil ? values.quantite_litres_gasoil ?? null : null,
           prix_litre_gasoil:     gasoil ? values.prix_litre_gasoil ?? null : null,
           beneficiaire_gasoil:   gasoil ? values.beneficiaire_gasoil ?? null : null,
@@ -1251,7 +1262,12 @@ export default function BordereauxPage() {
               {pagination.items.map((b) => (
                 <tr key={b.id} className="hover:bg-muted/30 transition-colors">
                   <td className="px-4 py-3 text-muted-foreground">{formatDate(b.date_bordereau)}</td>
-                  <td className="px-4 py-3 font-medium text-foreground">{b.numero}</td>
+                  <td className="px-4 py-3 font-medium text-foreground">
+                    <div>Réf. ABAF : {b.numero}</div>
+                    {b.numero_cotontchad && (
+                      <div className="text-xs text-muted-foreground">Réf. Cotontchad : {b.numero_cotontchad}</div>
+                    )}
+                  </td>
                   <td className="px-4 py-3 text-muted-foreground">
                     {camionMap.get(b.camion_id) ?? '—'}
                   </td>
@@ -1403,6 +1419,7 @@ export default function BordereauxPage() {
               distance_km:    editing.distance_km,
               type_fret:      editing.type_fret ?? 'direct',
               observations:   editing.observations,
+              numero_cotontchad: editing.numero_cotontchad ?? '',
               gasoil_enabled: !!editing.bsm_id,
               lignes: (lignesEdition ?? []).map((l) => ({
                 av_id:        l.av_id ?? 0,
@@ -1439,9 +1456,15 @@ export default function BordereauxPage() {
           <div className="space-y-5">
             <div className="grid grid-cols-2 gap-x-6 gap-y-3 text-sm sm:grid-cols-4">
               <div>
-                <p className="text-xs text-muted-foreground">Numéro</p>
+                <p className="text-xs text-muted-foreground">Réf. ABAF</p>
                 <p className="font-medium text-foreground">{viewing.numero}</p>
               </div>
+              {viewing.numero_cotontchad && (
+                <div>
+                  <p className="text-xs text-muted-foreground">Réf. Cotontchad</p>
+                  <p className="font-medium text-foreground">{viewing.numero_cotontchad}</p>
+                </div>
+              )}
               <div>
                 <p className="text-xs text-muted-foreground">Date</p>
                 <p className="font-medium text-foreground">{formatDate(viewing.date_bordereau)}</p>
@@ -1482,21 +1505,27 @@ export default function BordereauxPage() {
 
             <div className="grid grid-cols-3 gap-3">
               <div className="rounded-lg border border-border p-3">
-                <p className="text-xs text-muted-foreground">Poids à vide</p>
+                <p className="text-xs text-muted-foreground">Poids à vide (tare camion)</p>
                 <p className="mt-0.5 text-sm font-medium text-foreground">
                   {viewing.poids_vide_kg != null ? formatKg(viewing.poids_vide_kg) : '—'}
                 </p>
               </div>
               <div className="rounded-lg border border-border p-3">
-                <p className="text-xs text-muted-foreground">Poids chargé</p>
+                <p className="text-xs text-muted-foreground">Poids chargé (tare + marchandise)</p>
                 <p className="mt-0.5 text-sm font-medium text-foreground">
                   {viewing.poids_charge_kg != null ? formatKg(viewing.poids_charge_kg) : '—'}
                 </p>
               </div>
               <div className="rounded-lg border border-border p-3">
-                <p className="text-xs text-muted-foreground">Poids net coton</p>
+                <p className="text-xs text-muted-foreground">
+                  {viewing.type_fret?.startsWith('intrant') ? 'Poids net intrant' : 'Poids net coton'}
+                </p>
                 <p className="mt-0.5 text-sm font-medium text-foreground">
-                  {viewing.poids_net_kg != null ? formatKg(viewing.poids_net_kg) : '—'}
+                  {viewing.poids_net_kg != null
+                    ? formatKg(viewing.poids_net_kg)
+                    : totalLignesLecture > 0
+                    ? formatKg(totalLignesLecture)
+                    : '—'}
                 </p>
               </div>
               <div className="rounded-lg border border-border p-3">

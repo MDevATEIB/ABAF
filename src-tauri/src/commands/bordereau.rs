@@ -23,7 +23,7 @@ pub fn lister_bordereaux(
             "SELECT id, numero, saison_id, mission_id, bsm_id, camion_id, chauffeur_id, usine_id,
                     cgi_id, date_bordereau, poids_vide_kg, poids_charge_kg, poids_net_kg,
                     distance_km, type_fret, tarif_applique, unite_tarif, montant_brut,
-                    statut, observations, created_at, updated_at
+                    statut, observations, numero_cotontchad, created_at, updated_at
              FROM bordereaux
              WHERE (?1 IS NULL OR saison_id = ?1)
                AND (?2 IS NULL OR statut = ?2)
@@ -54,8 +54,9 @@ pub fn lister_bordereaux(
                 montant_brut: row.get(17)?,
                 statut: row.get(18)?,
                 observations: row.get(19)?,
-                created_at: row.get(20)?,
-                updated_at: row.get(21)?,
+                numero_cotontchad: row.get(20)?,
+                created_at: row.get(21)?,
+                updated_at: row.get(22)?,
             })
         })
         .map_err(|e| e.to_string())?
@@ -183,8 +184,8 @@ pub fn creer_bordereau(
     tx.execute(
         "INSERT INTO bordereaux (numero, saison_id, mission_id, camion_id, chauffeur_id,
                                  usine_id, cgi_id, date_bordereau, distance_km, type_fret,
-                                 observations, statut)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, 'brouillon')",
+                                 observations, numero_cotontchad, statut)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, 'brouillon')",
         rusqlite::params![
             numero,
             payload.saison_id,
@@ -197,6 +198,7 @@ pub fn creer_bordereau(
             payload.distance_km,
             type_fret,
             payload.observations,
+            payload.numero_cotontchad,
         ],
     )
     .map_err(|e| e.to_string())?;
@@ -313,18 +315,19 @@ pub fn modifier_bordereau(
 
     tx.execute(
         "UPDATE bordereaux
-         SET numero          = ?1,
-             mission_id      = ?2,
-             camion_id       = ?3,
-             chauffeur_id    = ?4,
-             usine_id        = ?5,
-             cgi_id          = ?6,
-             date_bordereau  = ?7,
-             distance_km     = ?8,
-             type_fret       = ?9,
-             observations    = ?10,
-             updated_at      = datetime('now')
-         WHERE id = ?11",
+         SET numero             = ?1,
+             mission_id         = ?2,
+             camion_id          = ?3,
+             chauffeur_id       = ?4,
+             usine_id           = ?5,
+             cgi_id             = ?6,
+             date_bordereau     = ?7,
+             distance_km        = ?8,
+             type_fret          = ?9,
+             observations       = ?10,
+             numero_cotontchad  = ?11,
+             updated_at         = datetime('now')
+         WHERE id = ?12",
         rusqlite::params![
             payload.numero,
             payload.mission_id,
@@ -336,6 +339,7 @@ pub fn modifier_bordereau(
             payload.distance_km,
             type_fret,
             payload.observations,
+            payload.numero_cotontchad,
             id
         ],
     )
@@ -808,7 +812,7 @@ fn get_bordereau_by_id(db: &rusqlite::Connection, id: i64) -> Result<Bordereau, 
         "SELECT id, numero, saison_id, mission_id, bsm_id, camion_id, chauffeur_id, usine_id,
                 cgi_id, date_bordereau, poids_vide_kg, poids_charge_kg, poids_net_kg,
                 distance_km, type_fret, tarif_applique, unite_tarif, montant_brut,
-                statut, observations, created_at, updated_at
+                statut, observations, numero_cotontchad, created_at, updated_at
          FROM bordereaux WHERE id = ?1",
         rusqlite::params![id],
         |row| {
@@ -833,8 +837,9 @@ fn get_bordereau_by_id(db: &rusqlite::Connection, id: i64) -> Result<Bordereau, 
                 montant_brut: row.get(17)?,
                 statut: row.get(18)?,
                 observations: row.get(19)?,
-                created_at: row.get(20)?,
-                updated_at: row.get(21)?,
+                numero_cotontchad: row.get(20)?,
+                created_at: row.get(21)?,
+                updated_at: row.get(22)?,
             })
         },
     )

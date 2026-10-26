@@ -21,3 +21,7 @@ export * from './useDashboard';
 export * from './useParametres';
 export * from './useSauvegarde';
 export * from './useProchainNumero';
+export * from './useDepenses';
+export * from './useIntervenants';
+export * from './usePieces';
+export * from './useSync';

@@ -1,0 +1,40 @@
+{
+  "expo": {
+    "name": "ABAF Terrain",
+    "slug": "abaf-terrain",
+    "version": "0.1.0",
+    "scheme": "abafterrain",
+    "platforms": ["ios", "android"],
+    "newArchEnabled": true,
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "icon": "./assets/icon.png",
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#14532d"
+    },
+    "android": {
+      "package": "com.abaf.terrain",
+      "versionCode": 1,
+      "usesCleartextTraffic": true,
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#14532d"
+      }
+    },
+    "plugins": [
+      "expo-router",
+      "expo-sqlite",
+      "expo-secure-store",
+      "expo-status-bar",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "ABAF Terrain accède à vos photos pour joindre les justificatifs de dépenses.",
+          "cameraPermission": "ABAF Terrain utilise l'appareil photo pour capturer les justificatifs de dépenses."
+        }
+      ]
+    ]
+  }
+}

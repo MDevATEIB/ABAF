@@ -30,38 +30,32 @@ export function EnteteAbaf({ entreprise }: { entreprise?: Parametres }) {
       <div className="relative flex items-center">
         <div className="absolute inset-0 flex items-center justify-center text-center">
           <div className="w-full">
-            <p className="text-[11px] font-semibold uppercase tracking-wide">
-              TRANSPORT ET TRANSIT
-            </p>
-            <p className="text-[11px] font-semibold uppercase tracking-wide">
+            <p className="text-[11px] font-bold uppercase tracking-wide">
               COMMERCE GENERAL-IMPORT-EXPORT
             </p>
-            <p className="text-[11px] font-semibold uppercase tracking-wide">
+            <p className="text-[11px] font-bold uppercase tracking-wide">
               COMMISSIONNAIRE ET TRANSPORT
             </p>
-            <p className="text-[11px] font-semibold uppercase tracking-wide">
+            <p className="text-[11px] font-bold uppercase tracking-wide">
               CONSTRUCTION ET REFECTION-GENIE CIVIL
             </p>
 
             <p className="mt-1.5 text-[10px]">
               <span className="font-semibold">RCCMTC-MOU2016 E0152</span>{' '}
-              <span className="font-semibold">NIF : 60008772</span>
+              <span className="font-semibold">NIF : 9049063H</span>
             </p>
             <p className="text-[10px]">
               <span className="font-semibold">BP : 050</span>{' '}
-              <span className="font-semibold">Tél : {telephoneAffiche}</span>
+              <span className="font-semibold">Tel : {telephoneAffiche}</span>
             </p>
             <p className="text-[10px] leading-snug">
               <span className="font-semibold">Siège social : Moundou</span>{' '}
               (Représentation N&apos;djaména, Abéché, Sarh, Koumra, Doba, Kélo, Pala et
               N&apos;gaoundéré)
             </p>
-
-            <p className="mt-1 text-[10px]">
-              <span className="font-semibold">N° compte bancaire : Ecobank</span>{' '}
-              03213961801-16
-            </p>
-            <p className="text-[10px]">
+            <p className="mt-0.5 text-[10px]">
+              N° comptes bancaires :{' '}
+              <span className="font-semibold">Ecobank</span> 03213961801-16 ;{' '}
               <span className="font-semibold">BAC</span> 37100746001-03 ;{' '}
               <span className="font-semibold">Orabank</span> 20654600201-70 ;{' '}
               <span className="font-semibold">CBT</span> 37140329301-66

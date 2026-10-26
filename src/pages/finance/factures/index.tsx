@@ -329,7 +329,12 @@ function FactureForm({
                             />
                           </td>
                           <td className="px-2 py-1.5 text-muted-foreground">{formatDate(b.date_bordereau)}</td>
-                          <td className="px-2 py-1.5 font-medium text-foreground">{b.numero}</td>
+                          <td className="px-2 py-1.5 font-medium text-foreground">
+                            <div>Réf. ABAF : {b.numero}</div>
+                            {b.numero_cotontchad && (
+                              <div className="text-xs text-muted-foreground">Réf. Cotontchad : {b.numero_cotontchad}</div>
+                            )}
+                          </td>
                           <td className="px-2 py-1.5 text-muted-foreground">
                             {camionMap.get(b.camion_id) ?? '—'}
                           </td>

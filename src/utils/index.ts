@@ -144,11 +144,14 @@ export function varianteStatutMission(statut: StatutMission): 'muted' | 'default
  * transfert.
  */
 export const TYPES_FRET: { value: TypeFret; label: string }[] = [
-  { value: 'direct', label: 'Direct — coton graine' },
-  { value: 'retour', label: 'Retour (à vide)' },
-  { value: 'evacuation', label: 'Évacuation' },
-  { value: 'intrant', label: 'Intrant' },
-  { value: 'transfert', label: 'Transfert' },
+  { value: 'direct',             label: 'Direct — coton graine' },
+  { value: 'retour',             label: 'Retour (à vide)' },
+  { value: 'evacuation',         label: 'Évacuation' },
+  { value: 'transfert',          label: 'Transfert' },
+  { value: 'intrant_direct',     label: 'Intrant — Direct' },
+  { value: 'intrant_retour',     label: 'Intrant — Retour (à vide)' },
+  { value: 'intrant_evacuation', label: 'Intrant — Évacuation' },
+  { value: 'intrant_transfert',  label: 'Intrant — Transfert' },
 ];
 
 /** Libellé français d'un type de fret. */
@@ -158,11 +161,14 @@ export function labelTypeFret(typeFret: TypeFret): string {
 
 /** Libellés courts des types de fret (colonnes des tableaux). */
 const LIBELLES_COURTS_FRET: Record<TypeFret, string> = {
-  direct: 'Direct',
-  retour: 'Retour',
-  evacuation: 'Évacuation',
-  intrant: 'Intrant',
-  transfert: 'Transfert',
+  direct:             'Direct',
+  retour:             'Retour',
+  evacuation:         'Évacuation',
+  transfert:          'Transfert',
+  intrant_direct:     'Intr. Direct',
+  intrant_retour:     'Intr. Retour',
+  intrant_evacuation: 'Intr. Évac.',
+  intrant_transfert:  'Intr. Transfert',
 };
 
 /** Libellé court d'un type de fret, « — » lorsqu'il n'est pas renseigné. */
@@ -318,14 +324,15 @@ export function extraireAnneeDocument(source?: string | null): string {
 export function codeSiteUsine(nomUsine?: string | null): string {
   if (!nomUsine) return 'MD';
   const n = nomUsine.toUpperCase();
-  if (n.includes('MOUNDOU')) return 'MD';
-  if (n.includes('MANDOUL') || n.includes('MOUNDOR')) return 'MP';
+  if (n.includes('MOUNDOU') || n.includes('MOUNDOR')) return 'MD';
+  if (n.includes('MANDOUL')) return 'MP';
   if (n.includes('MOISSALA') || n.includes('MOUSSORO') || n.includes('MOUSSOLO')) return 'MM';
   if (n.includes('PALA')) return 'PA';
   if (n.includes('DOBA')) return 'DB';
   if (n.includes('KOUMRA') || n.includes('GOUMRA')) return 'KM';
   if (n.includes('SARH') || n.includes('FORT-ARCHAMBAULT')) return 'SH';
   if (n.includes('NDJAMENA') || n.includes('N\'DJAMENA') || n.includes('DJAMENA')) return 'ND';
+  if (n.includes('KELO') || n.includes('KÉLO')) return 'KL';
   return 'MD';
 }
 

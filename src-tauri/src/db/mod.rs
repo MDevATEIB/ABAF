@@ -1,10 +1,20 @@
-use rusqlite::{params, Connection, Result};
+use rusqlite::{params, Connection, OptionalExtension, Result};
 use std::path::PathBuf;
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
+use uuid::Uuid;
+
+/// Tables référentielles qui reçoivent un `uuid` stable et dont les mouvements
+/// sont tracés dans `sync_oplog` pour la synchronisation avec le terrain.
+const TABLES_SYNC: &[&str] = &[
+    "saisons", "camions", "chauffeurs", "usines", "cgis", "avs", "missions",
+];
 
 // ─── État partagé de l'application ───────────────────────────────────────────
+/// La base est unique et partagée : les commandes Tauri comme le serveur de
+/// synchronisation y accèdent par ce verrou. Un `Arc` permet au serveur HTTP de
+/// la tenir sans dépendre de la durée de vie de `State<AppState>`.
 pub struct AppState {
-    pub db: Mutex<Connection>,
+    pub db: Arc<Mutex<Connection>>,
 }
 
 /// Initialise la base de données : ouvre le fichier, active les pragmas et
@@ -14,22 +24,33 @@ pub fn setup(app_data_dir: PathBuf) -> Result<AppState> {
         .map_err(|e| rusqlite::Error::InvalidParameterName(e.to_string()))?;
 
     let db_path = app_data_dir.join("abaf.db");
-    let conn = Connection::open(db_path)?;
 
+    let conn = Connection::open(&db_path)?;
     conn.execute_batch(
         "PRAGMA journal_mode = WAL;
          PRAGMA foreign_keys = ON;",
     )?;
 
-    run_migrations(&conn)?;
+    // Si les migrations échouent (base dans un état intermédiaire corrompu),
+    // on supprime la base et on repart de zéro plutôt que de bloquer l'app.
+    if let Err(e) = run_migrations(&conn) {
+        eprintln!("Migration échouée ({e}), réinitialisation de la base...");
+        drop(conn);
+        let _ = std::fs::remove_file(&db_path);
+        let conn2 = Connection::open(&db_path)?;
+        conn2.execute_batch(
+            "PRAGMA journal_mode = WAL;
+             PRAGMA foreign_keys = ON;",
+        )?;
+        run_migrations(&conn2)?;
+        compacter_sync_oplog(&conn2, JOURS_CONSERVATION_OPLOG).ok();
+        sauvegarde_automatique(&conn2, &app_data_dir);
+        return Ok(AppState { db: Arc::new(Mutex::new(conn2)) });
+    }
 
-    // Copie de sécurité automatique optionnelle (AGENT.md §24.3), sans
-    // bloquer le lancement en cas d'échec.
+    compacter_sync_oplog(&conn, JOURS_CONSERVATION_OPLOG).ok();
     sauvegarde_automatique(&conn, &app_data_dir);
-
-    Ok(AppState {
-        db: Mutex::new(conn),
-    })
+    Ok(AppState { db: Arc::new(Mutex::new(conn)) })
 }
 
 /// Exécute les migrations DDL dans l'ordre : le schéma initial (idempotent,
@@ -45,6 +66,18 @@ pub fn run_migrations(conn: &Connection) -> Result<()> {
 /// Idempotentes : une base déjà à jour est laissée intacte.
 fn appliquer_migrations_versionnees(conn: &Connection) -> Result<()> {
     let version: i64 = conn.query_row("PRAGMA user_version", [], |row| row.get(0))?;
+
+    // Sur une base toute neuve (version = 0), 001_initial.sql a déjà créé
+    // les tables avec le bon schéma v5. On saute toutes les migrations
+    // intermédiaires et on pose directement user_version = 6, puis on applique
+    // la migration v7 (module Exploitation et synchronisation mobile).
+    if version == 0 && schema_contient(conn, "bordereaux", "intrant_direct")? {
+        conn.execute_batch("PRAGMA user_version = 6")?;
+        migration_v7(conn)?;
+        conn.execute_batch("PRAGMA user_version = 7")?;
+        return Ok(());
+    }
+
     if version < 1 {
         migration_v1(conn)?;
         conn.execute_batch("PRAGMA user_version = 1")?;
@@ -64,6 +97,14 @@ fn appliquer_migrations_versionnees(conn: &Connection) -> Result<()> {
     if version < 5 {
         migration_v5(conn)?;
         conn.execute_batch("PRAGMA user_version = 5")?;
+    }
+    if version < 6 {
+        migration_v6(conn)?;
+        conn.execute_batch("PRAGMA user_version = 6")?;
+    }
+    if version < 7 {
+        migration_v7(conn)?;
+        conn.execute_batch("PRAGMA user_version = 7")?;
     }
     Ok(())
 }
@@ -373,6 +414,79 @@ fn migration_v5(conn: &Connection) -> Result<()> {
 }
 
 
+/// Migration v6 : ajoute la colonne `numero_cotontchad` (nullable) sur
+/// `bordereaux` pour stocker le numéro de référence Cotontchad.
+fn migration_v6(conn: &Connection) -> Result<()> {
+    if !colonne_existe(conn, "bordereaux", "numero_cotontchad")? {
+        conn.execute_batch(
+            "ALTER TABLE bordereaux ADD COLUMN numero_cotontchad TEXT NULL;",
+        )?;
+    }
+    Ok(())
+}
+
+/// Nombre de jours pendant lesquels `sync_oplog` conserve l'historique complet
+/// des changements. Au-delà, une seule entrée par ligne est gardée : un
+/// appareil resté hors ligne plus longtemps doit faire une resynchronisation
+/// totale (le serveur le lui signale par `reset = true`).
+const JOURS_CONSERVATION_OPLOG: i64 = 90;
+
+/// Migration v7 : module Exploitation (dépenses de terrain, intervenants,
+/// pièces de rechange) et infrastructure de synchronisation mobile.
+///
+/// Dans l'ordre :
+/// 1. identifiants `uuid` stables sur les référentiels synchronisés — les
+///    triggers du journal y font référence, ils doivent donc exister avant ;
+/// 2. schéma du module (`007_exploitation_sync.sql`) : tables, journaux,
+///    appareils, triggers et paramètres ;
+/// 3. amorçage du journal : les lignes déjà présentes sont publiées pour
+///    qu'un premier appareil de terrain récupère un référentiel complet.
+fn migration_v7(conn: &Connection) -> Result<()> {
+    for table in TABLES_SYNC {
+        if !colonne_existe(conn, table, "uuid")? {
+            conn.execute_batch(&format!("ALTER TABLE {table} ADD COLUMN uuid TEXT;"))?;
+        }
+
+        let ids: Vec<i64> = {
+            let mut stmt = conn.prepare(&format!("SELECT id FROM {table} WHERE uuid IS NULL"))?;
+            let rows = stmt.query_map([], |row| row.get::<_, i64>(0))?;
+            rows.collect::<Result<Vec<_>, _>>()?
+        };
+        let mut update = conn.prepare(&format!("UPDATE {table} SET uuid = ?1 WHERE id = ?2"))?;
+        for id in ids {
+            update.execute(params![Uuid::new_v4().to_string(), id])?;
+        }
+
+        conn.execute_batch(&format!(
+            "CREATE UNIQUE INDEX IF NOT EXISTS ux_{table}_uuid ON {table}(uuid);"
+        ))?;
+    }
+
+    conn.execute_batch(include_str!("../../migrations/007_exploitation_sync.sql"))?;
+
+    // `SET uuid = uuid` ne change aucune valeur mais déclenche le trigger
+    // AFTER UPDATE : le journal part donc avec une image complète du référentiel.
+    for table in TABLES_SYNC {
+        conn.execute_batch(&format!("UPDATE {table} SET uuid = uuid;"))?;
+    }
+
+    Ok(())
+}
+
+/// Compaction du journal des changements : au-delà de `jours`, on ne garde que
+/// la dernière entrée de chaque `(table_x, ref)`. Retourne le nombre d'entrées
+/// supprimées.
+pub fn compacter_sync_oplog(conn: &Connection, jours: i64) -> Result<usize> {
+    Ok(conn.execute(
+        "DELETE FROM sync_oplog
+         WHERE lvn < (SELECT COALESCE(MAX(o.lvn), 0) FROM sync_oplog o
+                      WHERE o.table_x = sync_oplog.table_x AND o.ref = sync_oplog.ref)
+           AND at < datetime('now', ?1)",
+        params![format!("-{jours} days")],
+    )?)
+}
+
+
 fn table_existe(conn: &Connection, nom: &str) -> Result<bool> {
     let n: i64 = conn.query_row(
         "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name=?1",
@@ -380,6 +494,20 @@ fn table_existe(conn: &Connection, nom: &str) -> Result<bool> {
         |row| row.get(0),
     )?;
     Ok(n > 0)
+}
+
+/// Vrai si le DDL de la table `table` (tel que stocké dans sqlite_master)
+/// contient la chaîne `motif` — utilisé pour détecter si un CHECK contient
+/// déjà une valeur donnée sans parser le SQL.
+fn schema_contient(conn: &Connection, table: &str, motif: &str) -> Result<bool> {
+    let sql: Option<String> = conn
+        .query_row(
+            "SELECT sql FROM sqlite_master WHERE type='table' AND name=?1",
+            [table],
+            |row| row.get(0),
+        )
+        .optional()?;
+    Ok(sql.map(|s| s.contains(motif)).unwrap_or(false))
 }
 
 /// Vrai si `table` possède la colonne `colonne` (via `PRAGMA table_info`).
@@ -453,14 +581,22 @@ pub(crate) fn nettoyer_anciennes_copies(dossier: &PathBuf, conserver: usize) {
 mod tests {
     use super::*;
 
-    /// Crée le schéma « ancien » (avant la Phase 7) : tarifs avec
-    /// `prix_tonne_km`, bordereaux et factures sans les colonnes du CDC v1.1.
+    /// Crée le schéma « ancien » (avant la Phase 7 — cœur tarifaire) : tarifs
+    /// avec `prix_tonne_km`, bordereaux et factures sans les colonnes du CDC
+    /// v1.1. Les tables non mentionnées sont créées par 001_initial.sql, d'où
+    /// le schéma complet de `saisons` attendu par les triggers de publication.
     fn base_ancienne() -> Connection {
         let conn = Connection::open_in_memory().expect("base en mémoire");
         conn.execute_batch(
             "CREATE TABLE saisons (
                  id INTEGER PRIMARY KEY,
-                 libelle TEXT NOT NULL
+                 libelle TEXT NOT NULL UNIQUE,
+                 date_debut TEXT NOT NULL,
+                 date_fin TEXT,
+                 statut TEXT NOT NULL DEFAULT 'ouverte'
+                            CHECK (statut IN ('ouverte', 'fermee')),
+                 created_at TEXT NOT NULL DEFAULT (datetime('now')),
+                 updated_at TEXT NOT NULL DEFAULT (datetime('now'))
              );
              CREATE TABLE tarifs (
                  id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -473,7 +609,7 @@ mod tests {
              );
              CREATE TABLE bordereaux (id INTEGER PRIMARY KEY, distance_km REAL);
              CREATE TABLE factures (id INTEGER PRIMARY KEY, montant_net REAL NOT NULL DEFAULT 0);
-             INSERT INTO saisons (id, libelle) VALUES (1, '2024-2025');
+             INSERT INTO saisons (id, libelle, date_debut) VALUES (1, '2024-2025', '2024-09-01');
              INSERT INTO tarifs (saison_id, distance_min, distance_max, prix_tonne_km)
                  VALUES (1, 0, 100, 145.0);",
         )
@@ -489,7 +625,10 @@ mod tests {
         let version: i64 = conn
             .query_row("PRAGMA user_version", [], |row| row.get(0))
             .unwrap();
-        assert_eq!(version, 5, "la base doit être marquée en version 5 après toutes les migrations");
+        assert_eq!(
+            version, 7,
+            "la base doit être marquée en version 7 après toutes les migrations"
+        );
 
         assert!(!colonne_existe(&conn, "tarifs", "prix_tonne_km").unwrap());
 
@@ -517,7 +656,7 @@ mod tests {
         let version: i64 = conn
             .query_row("PRAGMA user_version", [], |row| row.get(0))
             .unwrap();
-        assert_eq!(version, 5);
+        assert_eq!(version, 7);
         assert!(!colonne_existe(&conn, "tarifs", "prix_tonne_km").unwrap());
 
         conn.execute(
@@ -672,7 +811,10 @@ mod tests {
         let version: i64 = conn
             .query_row("PRAGMA user_version", [], |row| row.get(0))
             .unwrap();
-        assert_eq!(version, 5, "la base doit être en version 5 après migration_v5");
+        assert_eq!(
+            version, 7,
+            "la base doit être en version 7 après migration_v5 et migration_v7"
+        );
 
         conn.execute(
             "INSERT INTO saisons (libelle, date_debut) VALUES ('2026-2027', '2026-01-01')",
@@ -700,5 +842,180 @@ mod tests {
             );
             assert!(err.is_err(), "type_fret='{}' doit être rejeté dans tarifs", tf);
         }
+    }
+
+    /// Migration v7 : le module Exploitation est créé, les référentiels
+    /// synchronisés reçoivent un UUID unique et les triggers publient chaque
+    /// changement dans le journal utilisé par les appareils de terrain.
+    #[test]
+    fn migration_v7_cree_le_module_et_le_journal() {
+        let conn = Connection::open_in_memory().expect("base en mémoire");
+        run_migrations(&conn).expect("migration");
+
+        let version: i64 = conn
+            .query_row("PRAGMA user_version", [], |row| row.get(0))
+            .unwrap();
+        assert_eq!(version, 7);
+
+        for table in &["depenses", "intervenants", "pieces_rechange", "appareils", "sync_oplog"] {
+            assert!(table_existe(&conn, table).unwrap(), "la table {table} doit exister");
+        }
+        for table in TABLES_SYNC {
+            assert!(
+                colonne_existe(&conn, table, "uuid").unwrap(),
+                "la table {table} doit porter un uuid"
+            );
+        }
+
+        // Paramètres de synchronisation initialisés.
+        let port: String = conn
+            .query_row("SELECT valeur FROM parametres WHERE cle = 'sync_port'", [], |r| {
+                r.get(0)
+            })
+            .expect("sync_port");
+        assert_eq!(port, "9470");
+
+        // Une catégorie hors nomenclature est refusée par le CHECK.
+        conn.execute(
+            "INSERT INTO saisons (id, libelle, date_debut) VALUES (1, '2026-2027', '2026-01-01')",
+            [],
+        )
+        .unwrap();
+        let erreur = conn.execute(
+            "INSERT INTO depenses (uuid, saison_id, categorie, designation, montant, date_depense)
+             VALUES ('d1', 1, 'marche_noire', 'Test', 1000, '2026-01-02')",
+            [],
+        );
+        assert!(erreur.is_err(), "une catégorie inconnue doit être rejetée");
+    }
+
+    /// Les triggers du journal publient les créations, modifications (avec
+    /// l'appareil indiqué dans `sync_ctx`) et suppressions sous forme de
+    /// tombstones, avec les références en UUID.
+    #[test]
+    fn journal_de_synchronisation_enregistre_les_mouvements() {
+        let conn = Connection::open_in_memory().expect("base en mémoire");
+        run_migrations(&conn).expect("migration");
+
+        conn.execute_batch(
+            "INSERT INTO saisons (id, libelle, date_debut) VALUES (1, '2026-2027', '2026-01-01');
+             DELETE FROM sync_oplog;",
+        )
+        .unwrap();
+
+        conn.execute(
+            "INSERT INTO camions (id, immatriculation, capacite_tonnes) VALUES (1, 'AB-1234', 25)",
+            [],
+        )
+        .unwrap();
+
+        let (op, device): (String, String) = conn
+            .query_row(
+                "SELECT op, device FROM sync_oplog WHERE table_x = 'camions' ORDER BY lvn DESC",
+                [],
+                |row| Ok((row.get(0)?, row.get(1)?)),
+            )
+            .expect("écriture du journal pour un camion");
+        assert_eq!(op, "upsert");
+        assert_eq!(device, "", "une écriture du poste n'est pas portée par un appareil");
+
+        // L'écriture provient cette fois d'un appareil de terrain.
+        conn.execute("UPDATE sync_ctx SET device = 'poste-mobile-1'", [])
+            .unwrap();
+        conn.execute(
+            "INSERT INTO depenses (uuid, saison_id, camion_id, categorie, designation, montant, date_depense)
+             VALUES ('d1', 1, 1, 'piece_rechange', 'Embrayage', 300000, '2026-01-25')",
+            [],
+        )
+        .unwrap();
+
+        let payload: String = conn
+            .query_row(
+                "SELECT payload FROM sync_oplog WHERE table_x = 'depenses' ORDER BY lvn DESC",
+                [],
+                |row| row.get(0),
+            )
+            .expect("payload de la dépense");
+        let json: serde_json::Value = serde_json::from_str(&payload).expect("payload JSON");
+        assert_eq!(json["uuid"], "d1");
+        assert_eq!(json["categorie"], "piece_rechange");
+        assert_eq!(json["montant"], 300_000.0);
+        assert_eq!(json["statut"], "brouillon", "statut par défaut appliqué par le trigger");
+        let camion_uuid: String = conn
+            .query_row("SELECT uuid FROM camions WHERE id = 1", [], |row| row.get(0))
+            .unwrap();
+        assert_eq!(
+            json["camion_uuid"], camion_uuid,
+            "les références sont publiées en UUID du référentiel"
+        );
+
+        let device: String = conn
+            .query_row(
+                "SELECT device FROM sync_oplog WHERE table_x = 'depenses' ORDER BY lvn DESC",
+                [],
+                |row| row.get(0),
+            )
+            .unwrap();
+        assert_eq!(device, "poste-mobile-1");
+
+        // Une modification alimente le journal sans effacer l'entrée précédente.
+        conn.execute("UPDATE depenses SET montant = 320000 WHERE uuid = 'd1'", [])
+            .unwrap();
+        let nb: i64 = conn
+            .query_row("SELECT COUNT(*) FROM sync_oplog WHERE table_x = 'depenses'", [], |r| {
+                r.get(0)
+            })
+            .unwrap();
+        assert_eq!(nb, 2, "l'update ajoute une entrée au journal");
+
+        // Une suppression devient un tombstone `delete` sans payload.
+        conn.execute("DELETE FROM depenses WHERE uuid = 'd1'", []).unwrap();
+        let (op, payload): (String, Option<String>) = conn
+            .query_row(
+                "SELECT op, payload FROM sync_oplog WHERE table_x = 'depenses' ORDER BY lvn DESC",
+                [],
+                |row| Ok((row.get(0)?, row.get(1)?)),
+            )
+            .unwrap();
+        assert_eq!(op, "delete");
+        assert!(payload.is_none(), "un tombstone ne porte pas de payload");
+
+        // Tous les UUID de référentiels sont posés et uniques.
+        let sans_uuid: i64 = conn
+            .query_row("SELECT COUNT(*) FROM camions WHERE uuid IS NULL", [], |r| r.get(0))
+            .unwrap();
+        assert_eq!(sans_uuid, 0, "chaque camion doit avoir un UUID");
+    }
+
+    /// La compaction ne garde qu'une entrée par ligne au-delà du délai, sans
+    /// jamais supprimer la dernière image d'une ligne.
+    #[test]
+    fn compacter_journal_garde_la_derniere_image() {
+        let conn = Connection::open_in_memory().expect("base en mémoire");
+        run_migrations(&conn).expect("migration");
+
+        conn.execute_batch(
+            r#"INSERT INTO saisons (id, libelle, date_debut) VALUES (1, '2026-2027', '2026-01-01');
+             DELETE FROM sync_oplog;
+             INSERT INTO sync_oplog (table_x, ref, op, payload, at)
+                 VALUES ('depenses', 'd1', 'upsert', '{}', datetime('now', '-200 days')),
+                        ('depenses', 'd1', 'upsert', '{"montant":2}', datetime('now', '-150 days')),
+                        ('depenses', 'd1', 'upsert', '{"montant":3}', datetime('now', '-120 days')),
+                        ('depenses', 'd2', 'upsert', '{}', datetime('now', '-10 days'));"#,
+        )
+        .unwrap();
+
+        let supprimes = compacter_sync_oplog(&conn, 90).expect("compaction");
+        assert_eq!(supprimes, 2, "les deux anciennes images de d1 sont supprimées");
+
+        let reste: Vec<(String, String)> = conn
+            .prepare("SELECT ref, payload FROM sync_oplog ORDER BY lvn")
+            .unwrap()
+            .query_map([], |row| Ok((row.get(0)?, row.get(1)?)))
+            .unwrap()
+            .collect::<Result<Vec<_>, _>>()
+            .unwrap();
+        assert_eq!(reste.len(), 2);
+        assert_eq!(reste[0].1, "{\"montant\":3}", "la dernière image de d1 est conservée");
     }
 }

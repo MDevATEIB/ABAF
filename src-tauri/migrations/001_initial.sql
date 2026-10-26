@@ -17,14 +17,15 @@ CREATE TABLE IF NOT EXISTS saisons (
 );
 
 -- ─── Tarifs ─────────────────────────────────────────────────────────────────
--- Barème par campagne (CDC v1.1, contrat 2026-2027) : type de fret et unité
--- de tarification — « fcfa_tonne » pour les distances ≤ 90 km, « fcfa_tkm »
--- au-delà. « distance_max » NULL = tranche ouverte (ex. « 91 km et plus »).
 CREATE TABLE IF NOT EXISTS tarifs (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,
     saison_id       INTEGER NOT NULL REFERENCES saisons(id),
     type_fret       TEXT    NOT NULL DEFAULT 'direct'
-                    CHECK (type_fret IN ('direct', 'retour', 'evacuation', 'transfert')),
+                    CHECK (type_fret IN (
+                        'direct', 'retour', 'evacuation', 'transfert',
+                        'intrant_direct', 'intrant_retour',
+                        'intrant_evacuation', 'intrant_transfert'
+                    )),
     distance_min    REAL    NOT NULL,
     distance_max    REAL,
     unite_tarif     TEXT    NOT NULL DEFAULT 'fcfa_tkm'
@@ -172,6 +173,7 @@ CREATE TABLE IF NOT EXISTS bordereaux (
     numero          TEXT    NOT NULL UNIQUE,
     saison_id       INTEGER NOT NULL REFERENCES saisons(id),
     mission_id      INTEGER REFERENCES missions(id),
+    bsm_id          INTEGER REFERENCES bsm(id),
     camion_id       INTEGER NOT NULL REFERENCES camions(id),
     chauffeur_id    INTEGER REFERENCES chauffeurs(id),
     usine_id        INTEGER REFERENCES usines(id),
@@ -187,13 +189,17 @@ CREATE TABLE IF NOT EXISTS bordereaux (
                         END
                     ) STORED,
     distance_km     REAL,
-    -- Type de fret et tarif appliqué au moment de la validation (CDC v1.1).
-    type_fret       TEXT    CHECK (type_fret IN ('direct', 'retour', 'evacuation', 'transfert')),
+    type_fret       TEXT    CHECK (type_fret IN (
+                        'direct', 'retour', 'evacuation', 'transfert',
+                        'intrant_direct', 'intrant_retour',
+                        'intrant_evacuation', 'intrant_transfert'
+                    )),
     tarif_applique  REAL,
     unite_tarif     TEXT    CHECK (unite_tarif IN ('fcfa_tonne', 'fcfa_tkm')),
     montant_brut    REAL,
     statut          TEXT    NOT NULL DEFAULT 'brouillon' CHECK (statut IN ('brouillon', 'valide', 'facture')),
     observations    TEXT,
+    numero_cotontchad TEXT,
     created_at      TEXT    NOT NULL DEFAULT (datetime('now')),
     updated_at      TEXT    NOT NULL DEFAULT (datetime('now'))
 );

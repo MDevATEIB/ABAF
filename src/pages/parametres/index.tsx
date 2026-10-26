@@ -17,6 +17,7 @@ import {
 import { useParametres, useRestaurerBase, useSauvegarderBase, useSetParametres } from '@/hooks';
 import { choisirFichierSauvegarde } from '@/services';
 import { useAppStore } from '@/stores/app.store';
+import CarteSynchronisation from './synchronisation';
 
 const schema = z.object({
   entreprise_nom: z.string().trim().min(1, "Le nom de l'entreprise est obligatoire"),
@@ -146,7 +147,7 @@ export default function ParametresPage() {
     <div>
       <PageHeader
         title="Paramètres"
-        description="Configuration générale de l'application : informations de l'entreprise reprises dans les en-têtes des documents imprimés (BSM, factures), sauvegarde et restauration de la base de données."
+        description="Configuration générale de l'application : informations de l'entreprise reprises dans les en-têtes des documents imprimés (BSM, factures), sauvegarde et restauration de la base de données, synchronisation avec les téléphones de terrain."
       />
 
       {isLoading ? (
@@ -344,6 +345,11 @@ export default function ParametresPage() {
           </Button>
         </form>
       )}
+
+      {/* ── Synchronisation mobile, hors formulaire (état propre au serveur) ── */}
+      <div className="mt-6 max-w-2xl">
+        <CarteSynchronisation />
+      </div>
 
       <ConfirmDialog
         open={confirmationRestauration}

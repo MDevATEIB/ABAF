@@ -69,17 +69,6 @@ function FeuilletFacture({
 }: FeuilletFactureProps) {
   const lignesTransport = lignes.filter((l) => l.bordereau_id != null);
 
-  // Collect all LigneBordereau across all bordereaux of this facture
-  const toutesLignesBordereau: LigneBordereau[] = lignesTransport.flatMap(
-    (lf) => lignesBordereauParBordereauId.get(lf.bordereau_id!) ?? []
-  );
-  const totalPoidsLignesBordereau = toutesLignesBordereau.reduce((t, lb) => t + lb.poids_kg, 0);
-  // Fallback to LigneFacture poids_net_kg if no LigneBordereau loaded
-  const totalPoidsKg =
-    totalPoidsLignesBordereau > 0
-      ? totalPoidsLignesBordereau
-      : lignesTransport.reduce((t, l) => t + l.poids_net_kg, 0);
-
   const totalBrut = facture.montant_brut;
   const totalGasoil = facture.montant_gasoil;
   const totalNet = facture.montant_net;
@@ -141,8 +130,10 @@ function FeuilletFacture({
       <div className="mt-3 flex items-start justify-between gap-6">
         <div className="text-left">
           <p className="text-sm font-bold uppercase tracking-wide">
-            DOIT {client?.nom ?? '—'}
+            DOIT : {client?.nom ?? '—'}
           </p>
+          <p className="text-[11px] font-semibold">NIF : 9000022G</p>
+          <p className="text-[11px] font-semibold">RCCMTC/NDJ 12B37</p>
           {client?.adresse && (
             <p className="mt-0.5 text-[11px]">{client.adresse}</p>
           )}
@@ -170,7 +161,7 @@ function FeuilletFacture({
 
         <div className="text-right">
           <p className="text-[12px] font-semibold">
-            {usine ?? 'Moundou'} : {formatDate(facture.date_facture)}
+            Moundou : {formatDate(facture.date_facture)}
           </p>
           <p
             className={`mt-1.5 inline-block px-1.5 py-0.5 text-[10px] uppercase ${
@@ -284,7 +275,14 @@ function FeuilletFacture({
               return (
                 <tr key={lf.id}>
                   <td className="border border-black px-1 py-1 text-center">
-                    {bdr?.numero ?? '—'}
+                    <>
+                      <div>Réf. ABAF : {bdr?.numero ?? '—'}</div>
+                      {bdr?.numero_cotontchad && (
+                        <div className="text-[9px] text-neutral-500">
+                          Réf. Cotontchad : {bdr.numero_cotontchad}
+                        </div>
+                      )}
+                    </>
                   </td>
                   {/* col 2: Coton Graine */}
                   <td className="border border-black px-1 py-1 text-right">
@@ -350,7 +348,16 @@ function FeuilletFacture({
                 <tr key={`${lf.id}-${lb.id}`}>
                   {/* col 1: N° Bdrs — first row only */}
                   <td className="border border-black px-1 py-1 text-center">
-                    {isFirst ? (bdr?.numero ?? '—') : ''}
+                    {isFirst ? (
+                      <>
+                        <div>Réf. ABAF : {bdr?.numero ?? '—'}</div>
+                        {bdr?.numero_cotontchad && (
+                          <div className="text-[9px] text-neutral-500">
+                            Réf. Cotontchad : {bdr.numero_cotontchad}
+                          </div>
+                        )}
+                      </>
+                    ) : ''}
                   </td>
                   {/* col 2: Coton Graine */}
                   <td className="border border-black px-1 py-1 text-right">

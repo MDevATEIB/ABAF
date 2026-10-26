@@ -1,9 +1,9 @@
 {
-  "verdict": "CHANGES_REQUESTED",
+  "verdict": "NEEDS_CHANGES",
   "findings": [
-    "Sub-header column mislabelling — row-2 labels are misaligned with the data cells they sit above; col 6 displays montantBrutLigne but is headed 'Coton Graine'. Fix row-2 labels to match their data columns.",
-    "Per-row brut divergence from footer total — lb.distance_km is optional; the fallback to lf.distance_km (per-bordereau aggregate) produces incorrect per-row montantBrutLigne for bordereaux with weighings at different AV distances. Decide and store the canonical distance at LigneBordereau level.",
-    "Recomputed row totals vs stored footer total — montantBrutLigne is recalculated from scratch rather than from stored values, so rounding and the distance-fallback issue can produce visible row-vs-footer discrepancies. Validate with a real multi-line bordereau before shipping."
+    "Broken test after helpers deletion — factureDocument.test.mjs still imports buildLignesFactureTableData from the deleted factureDocument.helpers.js; the test will throw ERR_MODULE_NOT_FOUND on next run. Either delete the test file or replace it with one covering the current template behaviour.",
+    "Header typo 'Traif' — the first sub-column of Montant Brut is labelled 'Traif' instead of 'Tarif'; wrong on every printed invoice.",
+    "Hardcoded 90 km tarif-unit boundary — montantBrutLigne switches formula at distanceKm <= 90 instead of reading the canonical unite_tarif. For routes with a non-matching tarif unit the per-row brut will be wrong while the footer total (read from facture.montant_brut) remains correct, creating a visible row-vs-footer discrepancy."
   ],
   "reviewDoc": "c:\\Dev\\ABAF\\.agents\\tasks\\facture-fix\\review.md"
 }

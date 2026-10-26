@@ -16,7 +16,10 @@
 use rusqlite::Connection;
 
 /// Types de fret du contrat (CDC v1.1).
-pub const TYPES_FRET: [&str; 5] = ["direct", "retour", "evacuation", "transfert", "intrant"];
+pub const TYPES_FRET: [&str; 8] = [
+    "direct", "retour", "evacuation", "transfert",
+    "intrant_direct", "intrant_retour", "intrant_evacuation", "intrant_transfert",
+];
 
 /// Unités de tarification du contrat : « fcfa_tonne » pour les distances
 /// ≤ 90 km, « fcfa_tkm » au-delà.

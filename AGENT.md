@@ -80,7 +80,7 @@ Prix gasoil fixe	Défini avant la campagne et fixe pour la campagne
 Budget	Avances fournies par COTONTCHAD SN
 Pas d'authentification	Accès direct à l'application
 Pas de gestion des rôles	Tous les utilisateurs disposent des mêmes droits
-Mono-poste	Utilisation sur un seul ordinateur
+Mono-poste	Un seul ordinateur de gestion, source de vérité ; la saisie terrain peut s'appuyer sur l'application mobile en Wi‑Fi local (voir §28), sans serveur distant
 ________________________________________
 2. PÉRIMÈTRE FONCTIONNEL
 2.1. Modules inclus
@@ -106,6 +106,7 @@ Tableau de bord	KPI et graphiques	Haute
 Export	Export Excel et PDF	Haute
 Impression	Impression BSM, bordereaux et factures	Critique
 Paramètres	Configuration générale de l'application	Moyenne
+Exploitation	Dépenses de terrain, intervenants, pièces de rechange, rentabilité et saisie mobile hors ligne	Haute
 ________________________________________
 2.2. Modules exclus
 Module	Raison
@@ -116,8 +117,8 @@ Gestion des stocks	Non demandé
 Paie	Non demandé
 CRM	Non demandé
 Site web	Application desktop uniquement
-Application mobile	Application desktop uniquement
-Multi-utilisateur en réseau	Application mono-poste
+Application de gestion mobile	Le mobile n'est qu'un auxiliaire de saisie terrain ; la gestion reste sur le poste (voir §28)
+Multi-poste de gestion	La source de vérité reste un seul ordinateur ; les téléphones synchronisent vers lui
 Intégration API COTONTCHAD	Non demandé
 ________________________________________
 3. ARCHITECTURE TECHNIQUE
@@ -975,3 +976,22 @@ Le Rapport Annuel devient ainsi un état automatiquement généré à partir des
 Avant le développement définitif, une phase d'analyse fonctionnelle devra toutefois permettre de comparer systématiquement :
 Documents papier → Parcours réel → Données saisies → Règles de calcul → Base de données → Rapport Annuel Excel.
 Cette étape permettra de garantir que le logiciel reproduit fidèlement le fonctionnement d'ABAF et qu'aucune règle métier importante n'est perdue lors de la transformation du processus Excel vers le système informatique.
+________________________________________
+28. EXPLOITATION & SYNCHRONISATION TERRAIN
+28.1. Principe
+Le module Exploitation tient les charges de terrain (gasoil hors BSM, pièces, main d'œuvre, dépannages, pneus, indemnités, perdiems, péages, amendes…) à l'écart du circuit de facturation : aucune dépense ne modifie une facture ni le calcul du montant net (CDC v1.1). La marge est un croisement en lecture seule : marge = CA net facturé − charges validées.
+Écrans du poste : Dépenses de terrain (grille filtrable, audit Valider/Rejeter avec motif), Intervenants & pièces (référentiels du parc), Rentabilité (KPI, marge par camion, répartition par catégorie, exports Excel et PDF), État d'exploitation dans la section Rapports, et cartes Exploitation du Tableau de bord.
+28.2. Règles métier
+•	Toute ligne porte un uuid stable : le terrain ne manipule jamais les identifiants internes du poste.
+•	Une dépense validée ou rejetée au bureau est figée : les écritures du téléphone sont refusées et signalées dans le journal des conflits ; le poste gagne toujours.
+•	Un brouillon se résout au plus récent des updated_at (last-write-wins réétaloné par l'heure serveur).
+•	Référentiels créés sur le terrain : fusion par clé métier (immatriculation du camion, nom normalisé de l'intervenant ou de la pièce) ; le poste renvoie l'uuid retenu.
+•	Rejet obligatoire avec motif : le motif repart sur le téléphone pour correction.
+28.3. Synchronisation mobile
+•	Le poste embarque un serveur HTTP local (port 9470) et une réponse de découverte UDP (port 9471) ; aucun trafic Internet, aucune donnée dans le nuage.
+•	Appairage par code à 6 chiffres valable 10 minutes à usage unique ; le téléphone reçoit un jeton aléatoire stocké de façon sécurisée, révocable depuis Paramètres → Synchronisation mobile.
+•	Le pull suit un journal des changements (lvn monotone alimenté par triggers) ; les suppressions sont des tombstones. Le push se fait par lots, photos JPEG compressées séparément (1280 px, qualité 0,6) et stockées sur disque dans le dossier justificatifs/, hors base de données.
+•	Chaque écriture reçue porte l'identité de l'appareil et l'agent saisisseur ; la carte Paramètres affiche les adresses à donner au terrain, l'état du serveur, le pare-feu et les téléphones appairés.
+•	Le mobile fonctionne intégralement hors ligne (SQLite local, miroirs de référentiels sur 30 jours) et se synchronise à la demande, au retour au premier plan ou au recouvrement réseau.
+28.4. Hors périmètre
+Authentification des utilisateurs du poste, mode multi-PC, modification des factures par les charges, synchronisation descendante des dépenses validées modifiées au bureau (signalées comme conflits uniquement).

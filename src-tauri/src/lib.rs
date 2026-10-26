@@ -3,6 +3,7 @@ pub mod commands;
 pub mod db;
 pub mod models;
 pub mod services;
+pub mod sync;
 pub mod utils;
 
 use tauri::Manager;
@@ -25,6 +26,11 @@ pub fn run() {
                 .expect("Impossible d'initialiser la base de données");
 
             app.manage(state);
+            // Pilote du serveur de synchronisation : vivant même quand le
+            // serveur est éteint, pour que Paramètres puisse l'allumer.
+            app.manage::<std::sync::Arc<sync::SyncState>>(std::sync::Arc::new(
+                sync::SyncState::new(),
+            ));
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -109,8 +115,43 @@ pub fn run() {
             commands::rapport::generer_rapport_annuel,
             commands::rapport::exporter_rapport_excel,
             commands::rapport::sauvegarder_rapport_pdf,
+            commands::rapport::sauvegarder_exploitation_pdf,
             // Tableau de bord
             commands::dashboard::get_dashboard_stats,
+            // Exploitation : dépenses de terrain, intervenants, pièces, marge
+            commands::depense::lister_depenses,
+            commands::depense::get_depense,
+            commands::depense::creer_depense,
+            commands::depense::modifier_depense,
+            commands::depense::valider_depense,
+            commands::depense::rejeter_depense,
+            commands::depense::supprimer_depense,
+            commands::depense::get_justificatif_depense,
+            commands::depense::totaliser_depenses_par_categorie,
+            commands::depense::get_synthese_exploitation,
+            commands::depense::get_repartition_depenses,
+            commands::depense::get_marge_par_camion,
+            commands::depense::get_rapport_exploitation,
+            commands::intervenant::lister_intervenants,
+            commands::intervenant::creer_intervenant,
+            commands::intervenant::modifier_intervenant,
+            commands::intervenant::desactiver_intervenant,
+            commands::piece::lister_pieces,
+            commands::piece::creer_piece,
+            commands::piece::modifier_piece,
+            commands::piece::desactiver_piece,
+            // Synchronisation avec les applications de terrain
+            commands::sync::demarrer_serveur_sync,
+            commands::sync::arreter_serveur_sync,
+            commands::sync::get_etat_sync,
+            commands::sync::generer_code_appairage,
+            commands::sync::annuler_code_appairage,
+            commands::sync::lister_appareils,
+            commands::sync::revoquer_appareil,
+            commands::sync::supprimer_appareil,
+            commands::sync::ouvrir_dossier_justificatifs,
+            commands::sync::configurer_pare_feu,
+            commands::sync::tester_port_disponible,
             // Paramètres
             commands::parametre::get_parametres,
             commands::parametre::set_parametres,

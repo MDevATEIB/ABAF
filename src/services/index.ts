@@ -19,3 +19,7 @@ export * from './rapport';
 export * from './dashboard';
 export * from './parametre';
 export * from './sauvegarde';
+export * from './depense';
+export * from './intervenant';
+export * from './piece';
+export * from './sync';

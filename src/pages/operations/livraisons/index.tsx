@@ -111,7 +111,12 @@ export default function LivraisonsPage() {
                 {pagination.items.map((b) => (
                   <tr key={b.id} className="hover:bg-muted/30 transition-colors">
                     <td className="px-4 py-3 text-muted-foreground">{formatDate(b.date_bordereau)}</td>
-                    <td className="px-4 py-3 font-medium text-foreground">{b.numero}</td>
+                    <td className="px-4 py-3 font-medium text-foreground">
+                      <div>Réf. ABAF : {b.numero}</div>
+                      {b.numero_cotontchad && (
+                        <div className="text-xs text-muted-foreground">Réf. Cotontchad : {b.numero_cotontchad}</div>
+                      )}
+                    </td>
                     <td className="px-4 py-3 text-muted-foreground">{camionMap.get(b.camion_id) ?? '—'}</td>
                     <td className="px-4 py-3 text-muted-foreground">
                       {b.usine_id ? usineMap.get(b.usine_id) ?? '—' : '—'}

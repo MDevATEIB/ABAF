@@ -23,7 +23,7 @@ import {
 // distance de fin optionnelle (vide = tranche ouverte « X km et plus »).
 const schema = z
   .object({
-    type_fret: z.enum(['direct', 'retour', 'evacuation', 'transfert', 'intrant']),
+    type_fret: z.enum(['direct', 'retour', 'evacuation', 'transfert', 'intrant_direct', 'intrant_retour', 'intrant_evacuation', 'intrant_transfert']),
     unite_tarif: z.enum(['fcfa_tonne', 'fcfa_tkm']),
     distance_min: z.coerce.number({ invalid_type_error: 'Nombre requis' }).min(0, 'Doit être ≥ 0'),
     distance_max: z.number({ invalid_type_error: 'Nombre requis' })

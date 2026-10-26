@@ -30,6 +30,19 @@ thiserror  = "2"
 anyhow     = "1"
 uuid       = { version = "1", features = ["v4"] }
 
+# ─── Synchronisation avec les applications de terrain ────────────────────────
+# Serveur HTTP local (poste = serveur, téléphone = client) + découverte du poste
+# sur le réseau WiFi partagé.
+axum              = { version = "0.8", features = ["http1", "json", "query", "tokio", "macros"] }
+tokio             = { version = "1", features = ["net", "rt", "time", "io-util", "sync", "macros"] }
+sha2              = "0.10"
+rand              = "0.8"
+base64            = "0.22"
+local-ip-address  = "0.6"
+
+[dev-dependencies]
+tower = { version = "0.5", features = ["util"] }
+
 [profile.release]
 codegen-units = 1
 lto           = true

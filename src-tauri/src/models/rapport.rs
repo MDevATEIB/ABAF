@@ -1,5 +1,7 @@
 use serde::Serialize;
 
+use crate::models::exploitation::CategorieCharge;
+
 /// Ligne du tableau des opérations (colonnes du rapport annuel, AGENT.md §7.2).
 /// Une ligne correspond à un bordereau de la campagne ; les données gasoil et
 /// facturation sont rattachées via la mission et les lignes de facture.
@@ -44,6 +46,15 @@ pub struct TotauxRapport {
     pub avances_initiales: f64,
     pub avances_utilisees: f64,
     pub solde_avances: f64,
+    // ── Synthèse exploitation (module Exploitation, hors CDC v1.1) ──────────
+    /// Montant des charges d'exploitation validées de la campagne.
+    pub total_depenses: f64,
+    /// Nombre de dépenses validées.
+    pub depenses_validees: i64,
+    /// Montant des dépenses encore en brouillon (terrain non audité).
+    pub depenses_en_attente: f64,
+    /// `montant_net − total_depenses` : marge réelle du parc.
+    pub marge_nette: f64,
 }
 
 /// Facture incluse dans le relevé imprimé d'une campagne.
@@ -114,4 +125,7 @@ pub struct RapportAnnuel {
     pub bsms: Vec<BsmRapport>,
     pub paiements: Vec<PaiementRapport>,
     pub comparaison: Vec<ComparaisonCampagne>,
+    /// Charges validées de la campagne par catégorie (bloc « Synthèse
+    /// exploitation » du rapport et de l'export Excel).
+    pub charges_par_categorie: Vec<CategorieCharge>,
 }
